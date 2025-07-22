@@ -1,0 +1,26 @@
+{
+  "name": "jeeya's-sweet-16-celebration",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "@google/genai": "^1.10.0",
+    "@vercel/node": "^5.3.6",
+    "framer-motion": "^12.23.6",
+    "@tsparticles/engine": "^3.8.1",
+    "@vercel/blob": "^1.1.1",
+    "@vercel/kv": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.2.0"
+  }
+}

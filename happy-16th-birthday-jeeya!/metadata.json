@@ -1,0 +1,7 @@
+{
+  "name": "Jeeya's Sweet 16 Celebration",
+  "description": "An interactive web experience to celebrate Jeeya's 16th birthday, featuring a photo gallery, wishes, a virtual photo booth, and an AI poem generator.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
