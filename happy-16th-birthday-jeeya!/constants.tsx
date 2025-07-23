@@ -7,6 +7,7 @@ export interface Photo {
   id: string;
   url: string;
   author: string;
+  description?: string;
 }
 
 export interface Wish {
@@ -51,13 +52,8 @@ export const PoemIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className=
 export const timelineEvents: TimelineEvent[] = [
   { year: '2009', title: 'A Star is Born', description: 'The world became a little brighter. Welcome, Jeeya!', icon: <BabyIcon /> },
   { year: '2014', title: 'First Day of School', description: 'New adventures, new friends, and a lifetime of learning begins.', icon: <SchoolIcon /> },
-  { year: '2022', title: 'Becoming a Teen', description: 'Navigating new challenges and discovering the person you\'re meant to be.', icon: <HeartIcon /> },
+  { year: '2022', title: 'Becoming a Teen', description: "New rules. New routes. New you.", icon: <HeartIcon /> },
   { year: '2025', title: 'Sweet Sixteen!', description: 'Sixteen candles, a world of dreams. This is your year to shine!', icon: <CakeIcon /> },
-];
-
-export const initialWishes: Wish[] = [
-  { id: 'wish-1', name: 'Mom & Dad', message: 'Happy 16th Birthday to our wonderful daughter! We are so proud of you. May all your dreams come true. We love you to the moon and back!' },
-  { id: 'wish-2', name: 'Your Bestie', message: 'OMG HAPPY 16TH! Can\'t wait to celebrate with you. Thanks for being the best friend a person could ask for!' },
 ];
 
 export const initialPhotos: Photo[] = [
@@ -81,6 +77,6 @@ export const navLinks: { id: SectionId; title: string, icon: React.ReactNode }[]
     { id: 'timeline', title: 'Timeline', icon: <SchoolIcon /> },
     { id: 'gallery', title: 'Gallery', icon: <GalleryIcon /> },
     { id: 'wishes', title: 'Wishes', icon: <WishesIcon /> },
-    { id: 'photobooth', title: 'Photo Booth', icon: <PhotoBoothIcon /> },
+    { id: 'photobooth', title: 'Booth', icon: <PhotoBoothIcon /> },
     { id: 'poem', title: 'Poem', icon: <PoemIcon /> },
 ];

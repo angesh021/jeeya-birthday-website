@@ -67,7 +67,7 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
                 reader.onerror = (error) => reject(error);
             });
             
-            const newPhoto = await addPhoto({ url: base64Url, author });
+            const newPhoto = await addPhoto({ url: base64Url, author, description: 'Uploaded from the gallery' });
             onUpload(newPhoto);
             onClose();
 

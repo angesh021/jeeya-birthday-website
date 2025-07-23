@@ -27,7 +27,7 @@ const phrases = [
     "Happy Sweet 16, Jeeya!",
     "A new chapter begins.",
     "Time to celebrate you!",
-    "Sixteen looks good on you."
+    "Sixteen candles, endless wishes"
 ];
 
 const Hero: React.FC = () => {
@@ -162,7 +162,7 @@ const Hero: React.FC = () => {
                          style={{ borderRadius: '58% 42% 38% 62% / 63% 40% 60% 37%', animation: 'morph 8s ease-in-out infinite reverse' }}
                     >
                         <img
-                            src="https://images.unsplash.com/photo-1554151228-14d9def656e4?q=80&w=800&auto=format&fit=crop"
+                            src="https://6utr15bvp7cgy83c.public.blob.vercel-storage.com/jeeya-portrait.jpg"
                             alt="Portrait of the birthday girl"
                             className="w-full h-full object-cover"
                         />

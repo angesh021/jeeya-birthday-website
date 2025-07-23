@@ -28,7 +28,7 @@ export const getPhotos = async (): Promise<Photo[]> => {
     return response.json();
 };
 
-export const addPhoto = async (photoData: { url: string; author: string }): Promise<Photo> => {
+export const addPhoto = async (photoData: { url: string; author: string; description: string }): Promise<Photo> => {
     const response = await fetch(`${API_BASE}/api/photos`, {
         method: 'POST',
         headers: {

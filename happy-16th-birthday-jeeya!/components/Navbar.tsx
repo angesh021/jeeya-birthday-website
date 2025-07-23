@@ -46,59 +46,67 @@ const Navbar: React.FC<NavbarProps> = ({ activeSection }) => {
   return (
     <>
       {/* Desktop Navbar */}
-      <motion.ul
+      <motion.nav
         variants={desktopNavVariants}
         animate={hidden ? 'hidden' : 'visible'}
         transition={{ duration: 0.35, ease: 'easeInOut' }}
-        className="hidden md:flex fixed top-4 left-1/2 -translate-x-1/2 z-40 items-center gap-2 bg-neutral-900/60 backdrop-blur-xl rounded-full p-2 shadow-lg border border-white/10"
+        className="hidden md:flex fixed top-4 inset-x-0 z-40 justify-center"
       >
-        {navLinks.map((link) => (
-          <li key={link.id} className="relative">
-            <a
-              href={`#${link.id}`}
-              onClick={(e) => handleLinkClick(e, link.id)}
-              className={`block px-4 py-2 text-sm rounded-full transition-colors ${activeSection === link.id ? 'text-white' : 'text-neutral-400 hover:text-white'}`}
-            >
-              {link.title}
-            </a>
-            {activeSection === link.id && (
-              <motion.div
-                layoutId="desktop-nav-highlight"
-                className="absolute inset-0 bg-neutral-700/80 rounded-full z-[-1]"
-                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              />
-            )}
-          </li>
-        ))}
-      </motion.ul>
+        <ul
+          className="flex items-center gap-2 bg-neutral-900/60 backdrop-blur-xl rounded-full p-2 shadow-lg border border-white/10"
+        >
+          {navLinks.map((link) => (
+            <li key={link.id} className="relative">
+              <a
+                href={`#${link.id}`}
+                onClick={(e) => handleLinkClick(e, link.id)}
+                className={`block px-4 py-2 text-sm rounded-full transition-colors ${activeSection === link.id ? 'text-white' : 'text-neutral-400 hover:text-white'}`}
+              >
+                {link.title}
+              </a>
+              {activeSection === link.id && (
+                <motion.div
+                  layoutId="desktop-nav-highlight"
+                  className="absolute inset-0 bg-neutral-700/80 rounded-full z-[-1]"
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                />
+              )}
+            </li>
+          ))}
+        </ul>
+      </motion.nav>
 
       {/* Mobile Navbar */}
-      <motion.ul
+      <motion.nav
         variants={mobileNavVariants}
         animate={hidden ? 'hidden' : 'visible'}
         transition={{ duration: 0.35, ease: 'easeInOut' }}
-        className="md:hidden flex fixed bottom-4 left-1/2 -translate-x-1/2 z-40 items-center gap-1 bg-neutral-900/70 backdrop-blur-xl rounded-full p-2 shadow-lg border border-white/10"
+        className="md:hidden flex fixed bottom-4 inset-x-0 z-40 justify-center"
       >
-        {navLinks.map((link) => (
-           <li key={link.id} className="relative">
-             <a
-               href={`#${link.id}`}
-               onClick={(e) => handleLinkClick(e, link.id)}
-               className={`flex flex-col items-center justify-center gap-1 rounded-full transition-colors w-12 h-12 ${activeSection === link.id ? 'text-white' : 'text-neutral-400 hover:text-white'}`}
-             >
+        <ul
+          className="flex items-center gap-1 bg-neutral-900/70 backdrop-blur-xl rounded-full p-2 shadow-lg border border-white/10"
+        >
+          {navLinks.map((link) => (
+            <li key={link.id} className="relative">
+              <a
+                href={`#${link.id}`}
+                onClick={(e) => handleLinkClick(e, link.id)}
+                className={`flex flex-col items-center justify-center gap-1 rounded-full transition-colors w-12 h-12 ${activeSection === link.id ? 'text-white' : 'text-neutral-400 hover:text-white'}`}
+              >
               {link.icon}
               <span className="text-[10px] leading-tight">{link.title}</span>
-             </a>
-              {activeSection === link.id && (
-                  <motion.div
-                  layoutId="mobile-nav-highlight"
-                  className="absolute inset-0 bg-neutral-700/80 rounded-full z-[-1]"
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                  />
-              )}
-          </li>
-        ))}
-      </motion.ul>
+              </a>
+                {activeSection === link.id && (
+                    <motion.div
+                    layoutId="mobile-nav-highlight"
+                    className="absolute inset-0 bg-neutral-700/80 rounded-full z-[-1]"
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    />
+                )}
+            </li>
+          ))}
+        </ul>
+      </motion.nav>
     </>
   );
 };

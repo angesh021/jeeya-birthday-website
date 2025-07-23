@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { stickers, Sticker as StickerType } from '../constants.tsx';
@@ -10,10 +11,13 @@ type PlacedSticker = StickerType & {
     renderId: number;
 };
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto }) => {
     const [status, setStatus] = useState<CameraStatus>('idle');
+    const [stream, setStream] = useState<MediaStream | null>(null);
     const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([]);
-    const [countdown, setCountdown] = useState<number | null>(null);
+    const [overlayMessage, setOverlayMessage] = useState<string>('');
     const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
     const [finalPhotoStrip, setFinalPhotoStrip] = useState<string | null>(null);
     const [flash, setFlash] = useState(false);
@@ -27,11 +31,9 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
         setStatus('initializing');
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                    setStatus('ready');
-                }
+                const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720, aspectRatio: 1 } });
+                setStream(mediaStream);
+                setStatus('ready');
             } catch (err) {
                 console.error("Error accessing camera:", err);
                 setStatus('denied');
@@ -42,12 +44,17 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
     }, []);
 
     const stopCamera = useCallback(() => {
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
+        if (stream) {
             stream.getTracks().forEach(track => track.stop());
-            videoRef.current.srcObject = null;
+            setStream(null);
         }
-    }, []);
+    }, [stream]);
+
+    useEffect(() => {
+        if (status === 'ready' && stream && videoRef.current) {
+            videoRef.current.srcObject = stream;
+        }
+    }, [status, stream]);
 
     useEffect(() => {
         return () => stopCamera();
@@ -111,59 +118,166 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
     const startCaptureSequence = async () => {
         setStatus('capturing');
         const photos: string[] = [];
-        for (let i = 0; i < 4; i++) {
-            await new Promise(resolve => {
-                setCountdown(3);
-                const timer = setInterval(() => setCountdown(c => (c as number) - 1), 1000);
-                setTimeout(() => clearInterval(timer), 3000);
-                setTimeout(resolve, 3000);
-            });
-            setCountdown(null);
+    
+        const messages = [
+            { pre: "Get Ready...", capture: "Photo 1 of 3", post: "Amazing Shot!" },
+            { pre: "Ready for the next one?", capture: "Photo 2 of 3", post: "Awesome!" },
+            { pre: "Last one, make it count!", capture: "Photo 3 of 3", post: "Perfect! 🎉" },
+        ];
+    
+        await sleep(300); // Allow instruction overlay to fade out
+    
+        for (const msg of messages) {
+            setOverlayMessage(msg.pre);
+            await sleep(2000);
+    
+            setOverlayMessage(msg.capture);
+            await sleep(1500);
+    
             setFlash(true);
+            setOverlayMessage(''); // Hide message during flash
             const photoData = await capturePhoto();
             if (photoData) photos.push(photoData);
-            setTimeout(() => setFlash(false), 500);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await sleep(500); // Flash duration
+            setFlash(false);
+    
+            setOverlayMessage(msg.post);
+            await sleep(2000);
         }
+    
+        setOverlayMessage("Creating your masterpiece...");
+        await sleep(1000);
+    
         setCapturedPhotos(photos);
         setStatus('captured');
+        setOverlayMessage('');
         stopCamera();
     };
 
     const createPhotoStrip = useCallback(() => {
-        if (capturedPhotos.length < 4 || !photoStripCanvasRef.current) return;
-        
+        if (capturedPhotos.length < 3 || !photoStripCanvasRef.current) return;
+    
         const canvas = photoStripCanvasRef.current;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        
-        const stripWidth = 400;
-        const photoHeight = 300;
-        const padding = 20;
-        const stripHeight = (photoHeight * 4) + (padding * 5);
-        
-        canvas.width = stripWidth;
-        canvas.height = stripHeight;
 
-        ctx.fillStyle = '#1c1642';
-        ctx.fillRect(0, 0, stripWidth, stripHeight);
+        const canvasWidth = 800;
+        const canvasHeight = 1100;
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
         
-        ctx.font = "bold 32px 'Playfair Display', serif";
-        ctx.fillStyle = '#e94560';
+        // --- Enhanced Birthday Theme Background ---
+        const cx = canvasWidth / 2;
+        const cy = canvasHeight / 2;
+
+        const bgGradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, canvasWidth * 0.8);
+        bgGradient.addColorStop(0, '#3a327a');
+        bgGradient.addColorStop(1, '#0f0c29');
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        
+        const confettiColors = ['#e94560', '#ff7675', '#fdcb6e', '#a29bfe', '#81ecec'];
+        for (let i = 0; i < 200; i++) {
+            const x = Math.random() * canvasWidth;
+            const y = Math.random() * canvasHeight;
+            const width = Math.random() * 8 + 4;
+            const height = Math.random() * 15 + 5;
+            const rotation = Math.random() * Math.PI * 2;
+            const color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+            const alpha = Math.random() * 0.6 + 0.4;
+            
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+            ctx.fillStyle = color;
+            ctx.globalAlpha = alpha;
+            ctx.fillRect(-width / 2, -height / 2, width, height);
+            ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+        
+        // --- Random Title ---
+        const titles = ["Happy Sweet 16!", "Party Time!", "Making Memories", "Sixteen & Sparkling", "Jeeya's Big Day!"];
+        const randomTitle = titles[Math.floor(Math.random() * titles.length)];
+
+        ctx.font = "bold 60px 'Playfair Display', serif";
         ctx.textAlign = 'center';
-        ctx.fillText("Jeeya's Sweet 16", stripWidth / 2, padding * 2.5);
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = '#f0f0f0';
+        ctx.fillText(randomTitle, canvasWidth / 2, 100);
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#e94560';
+        ctx.fillText(randomTitle, canvasWidth / 2, 100);
 
-        capturedPhotos.forEach((photoSrc, index) => {
-            const img = new Image();
-            img.src = photoSrc;
-            img.onload = () => {
-                const yPos = (padding * (index + 2)) + (photoHeight * index) - padding*2;
-                ctx.drawImage(img, padding, yPos, stripWidth - (padding * 2), photoHeight);
-            };
+        const drawPolaroid = (img: HTMLImageElement, x: number, y: number, rotation: number) => {
+            const pWidth = 320;
+            const pHeight = 380;
+            const photoAreaWidth = 280;
+            const photoAreaHeight = 280;
+            const photoOffsetX = (pWidth - photoAreaWidth) / 2;
+            const photoOffsetY = 20;
+            const captionY = photoOffsetY + photoAreaHeight + 45;
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation * Math.PI / 180);
+            
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+            ctx.shadowBlur = 25;
+            ctx.shadowOffsetX = 10;
+            ctx.shadowOffsetY = 10;
+            
+            ctx.fillStyle = '#fdfdfd';
+            ctx.fillRect(-pWidth / 2, -pHeight / 2, pWidth, pHeight);
+            
+            ctx.shadowColor = 'transparent';
+
+            ctx.drawImage(
+                img, 0, 0, img.naturalWidth, img.naturalHeight,
+                -pWidth / 2 + photoOffsetX, -pHeight / 2 + photoOffsetY,
+                photoAreaWidth, photoAreaHeight
+            );
+            
+            ctx.fillStyle = '#555';
+            ctx.font = "24px 'Dancing Script', cursive";
+            ctx.textAlign = 'center';
+            ctx.fillText("Jeeya B-Day Memories", 0, -pHeight / 2 + captionY);
+
+            ctx.restore();
+        };
+
+        const imageLoadPromises = capturedPhotos.map(src => {
+            return new Promise<HTMLImageElement>((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.style.objectFit = 'cover';
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
         });
 
-        setTimeout(() => setFinalPhotoStrip(canvas.toDataURL('image/jpeg')), 500); // give images time to draw
+        Promise.all(imageLoadPromises).then(images => {
+            const positions = [
+                { x: canvasWidth / 2, y: 320, rot: -6 },
+                { x: canvasWidth / 2 - 180, y: 680, rot: 8 },
+                { x: canvasWidth / 2 + 180, y: 700, rot: -3 },
+            ];
+
+            images.forEach((img, index) => {
+                if (positions[index]) {
+                    drawPolaroid(img, positions[index].x, positions[index].y, positions[index].rot);
+                }
+            });
+            
+            setFinalPhotoStrip(canvas.toDataURL('image/jpeg', 0.95));
+        }).catch(err => {
+            console.error("Failed to load captured images for strip creation:", err);
+        });
     }, [capturedPhotos]);
+
 
     useEffect(() => {
         if (status === 'captured' && capturedPhotos.length > 0) {
@@ -191,7 +305,7 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
     const handleAddToGallery = async () => {
         if (!finalPhotoStrip) return;
         try {
-            const newPhotoData = await addPhoto({ url: finalPhotoStrip, author: 'Photo Booth Fun' });
+            const newPhotoData = await addPhoto({ url: finalPhotoStrip, author: 'Photo Booth Fun', description: 'Created in the Virtual Photo Booth!' });
             onNewPhoto(newPhotoData);
             alert('Photo added to gallery!');
             handleRetake();
@@ -203,10 +317,9 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
 
     return (
         <div className="py-16 text-center">
-            <motion.h2 className="text-4xl md:text-6xl font-bold text-center mb-4">Virtual Photo Booth</motion.h2>
-            <motion.p className="text-brand-text/80 mb-8 max-w-2xl mx-auto">Get ready to strike a pose! Drag stickers onto the camera view and capture your moment.</motion.p>
+            <motion.h2 className="text-4xl md:text-6xl font-bold text-center mb-8">Virtual Photo Booth</motion.h2>
             
-            <div className="w-full max-w-4xl mx-auto bg-brand-surface p-4 rounded-xl shadow-2xl">
+            <div className="w-full max-w-4xl mx-auto bg-brand-surface p-4 rounded-xl shadow-2xl min-h-[550px] flex flex-col justify-center">
                 {status === 'idle' && (
                     <div className="h-[480px] flex flex-col items-center justify-center">
                         <h3 className="text-2xl mb-4">Ready for your closeup?</h3>
@@ -222,42 +335,92 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
                 
                 <AnimatePresence>
                     {(status === 'ready' || status === 'capturing') && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative w-full aspect-video" ref={stickerContainerRef}>
-                            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full rounded-lg object-cover transform -scale-x-100"></video>
-                            {placedStickers.map(sticker => (
-                                <motion.div key={sticker.renderId} drag dragMomentum={false} onDragEnd={(e,i) => handleDragEnd(e,i,sticker.renderId)} className="absolute cursor-grab active:cursor-grabbing" style={{ x: sticker.x, y: sticker.y }}>
-                                    <img id={`sticker-img-${sticker.renderId}`} src={sticker.src} alt={sticker.alt} className="w-20 h-20 pointer-events-none" crossOrigin="anonymous"/>
-                                </motion.div>
-                            ))}
-                            {countdown !== null && (
-                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-9xl font-bold text-white">
-                                    {countdown}
-                                </div>
-                            )}
-                            {flash && <div className="absolute inset-0 bg-white animate-flash"></div>}
+                        <motion.div
+                            initial={{ opacity: 0, rotate: -5, scale: 0.9 }}
+                            animate={{ opacity: 1, rotate: -2, scale: 1 }}
+                            exit={{ opacity: 0, rotate: -5, scale: 0.9 }}
+                            transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                            className="relative w-full max-w-md mx-auto bg-white p-4 pb-20 shadow-2xl rounded-md"
+                        >
+                            <div className="relative w-full aspect-square overflow-hidden rounded-sm bg-black" ref={stickerContainerRef}>
+                                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform -scale-x-100"></video>
+                                
+                                <AnimatePresence>
+                                    {status === 'ready' && (
+                                         <motion.div
+                                            className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-center p-4"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                        >
+                                            <h3 className="font-bold text-2xl text-brand-accent mb-4 font-serif">Get Ready!</h3>
+                                            <div className="text-white space-y-2">
+                                                <p><strong className="text-brand-secondary">1.</strong> Drag fun stickers onto the screen.</p>
+                                                <p><strong className="text-brand-secondary">2.</strong> Click 'Take Photos' to start.</p>
+                                                <p><strong className="text-brand-secondary">3.</strong> Smile for 3 pictures!</p>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                                
+                                {placedStickers.map(sticker => (
+                                    <motion.div key={sticker.renderId} drag dragMomentum={false} onDragEnd={(e,i) => handleDragEnd(e,i,sticker.renderId)} className="absolute cursor-grab active:cursor-grabbing" style={{ x: sticker.x, y: sticker.y }}>
+                                        <img id={`sticker-img-${sticker.renderId}`} src={sticker.src} alt={sticker.alt} className="w-20 h-20 pointer-events-none" crossOrigin="anonymous"/>
+                                    </motion.div>
+                                ))}
+                               
+                                <AnimatePresence>
+                                    {overlayMessage && (
+                                        <motion.div
+                                            key={overlayMessage}
+                                            className="absolute inset-0 flex items-center justify-center text-center p-4 pointer-events-none"
+                                            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.8, y: -20 }}
+                                            transition={{ type: 'spring', damping: 20, stiffness: 150 }}
+                                        >
+                                            <p className="text-5xl md:text-7xl font-bold text-white drop-shadow-lg font-script">
+                                                {overlayMessage}
+                                            </p>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                {flash && <div className="absolute inset-0 bg-white animate-flash"></div>}
+                            </div>
+                            <p className="absolute bottom-6 left-0 right-0 text-center font-script text-2xl text-gray-800 select-none">Jeeya B-Day Memories</p>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
                 <AnimatePresence>
-                {status === 'captured' && finalPhotoStrip && (
-                    <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col md:flex-row gap-8 items-center justify-center">
-                        <img src={finalPhotoStrip} alt="Your photo strip" className="rounded-lg shadow-lg max-w-sm w-full"/>
-                        <div className="flex flex-col gap-4">
-                            <h3 className="text-3xl font-bold">Lookin' Good!</h3>
-                            <button onClick={handleAddToGallery} className="px-6 py-3 bg-brand-primary text-white font-bold rounded-full">Add to Gallery</button>
-                            <button onClick={handleDownload} className="px-6 py-3 bg-brand-accent text-brand-background font-bold rounded-full">Download</button>
-                            <button onClick={handleRetake} className="px-6 py-3 bg-gray-500 text-white font-bold rounded-full">Retake</button>
-                        </div>
+                {status === 'captured' && (
+                    <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center p-4">
+                        {!finalPhotoStrip ? (
+                             <div className="flex flex-col items-center gap-2 my-12">
+                                <div className="w-8 h-8 border-4 border-dashed rounded-full animate-spin border-brand-primary"></div>
+                                <p className="text-brand-text/70">Assembling your photo strip...</p>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col md:flex-row gap-8 items-center justify-center">
+                                <img src={finalPhotoStrip} alt="Your photo strip" className="rounded-lg shadow-lg max-w-md w-full object-contain"/>
+                                <div className="flex flex-col gap-4">
+                                    <h3 className="text-3xl font-bold">Lookin' Good!</h3>
+                                    <button onClick={handleAddToGallery} className="px-6 py-3 bg-brand-primary text-white font-bold rounded-full transition-transform hover:scale-105">Add to Gallery</button>
+                                    <button onClick={handleDownload} className="px-6 py-3 bg-brand-accent text-brand-background font-bold rounded-full transition-transform hover:scale-105">Download</button>
+                                    <button onClick={handleRetake} className="px-6 py-3 bg-gray-500 text-white font-bold rounded-full transition-transform hover:scale-105">Retake</button>
+                                </div>
+                            </div>
+                        )}
                     </motion.div>
                 )}
                 </AnimatePresence>
 
                 {(status === 'ready' || status === 'capturing') && (
-                    <div className="mt-4">
-                        <div className="flex items-center justify-between">
+                    <div className="mt-8">
+                        <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-4 max-w-md mx-auto">
                             <div className="flex gap-2 bg-brand-background p-2 rounded-full">
-                                {stickers.map(s => <img key={s.id} src={s.src} alt={s.alt} className="w-12 h-12 cursor-pointer hover:scale-110 transition-transform" onClick={() => addStickerToCanvas(s)}/>)}
+                                {stickers.map(s => <img key={s.id} src={s.src} alt={s.alt} className="w-10 h-10 sm:w-12 sm:h-12 cursor-pointer hover:scale-110 transition-transform" onClick={() => addStickerToCanvas(s)}/>)}
                             </div>
                             <button onClick={startCaptureSequence} disabled={status === 'capturing'} className="px-8 py-4 bg-gradient-to-r from-brand-primary to-brand-secondary text-white font-bold rounded-full shadow-lg disabled:opacity-50">
                                 {status === 'capturing' ? 'Capturing...' : 'Take Photos'}

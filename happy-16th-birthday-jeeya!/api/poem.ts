@@ -21,17 +21,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    const prompt = `Write a beautiful, heartfelt, and uplifting short poem for a 16th birthday celebration for a person named Jeeya. The poem should be about the joy of turning sixteen, celebrating memories, and looking forward to the future with excitement. It should feel personal and magical. Incorporate the following theme or keyword: "${keyword}". The poem must be elegant, consisting of 3-4 short stanzas. Do not use any markdown formatting or titles.`;
+    const fullPrompt = `You are a world-class poet. Your task is to write a beautiful, heartfelt, and uplifting short poem for a 16th birthday celebration for a person named Jeeya. The poem should be about the joy of turning sixteen, celebrating memories, and looking forward to the future with excitement. It should feel personal and magical. The poem must be elegant, consisting of 3-4 short stanzas. Do not use any markdown formatting or titles.
+
+Incorporate the following theme or keyword into the poem: "${keyword}".`;
     
     const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: prompt,
+        contents: fullPrompt,
         config: {
             temperature: 0.8,
-            topP: 1,
-            topK: 1,
-            // Disable thinking for a faster response to avoid serverless timeouts
-            thinkingConfig: { thinkingBudget: 0 }
         }
     });
 
