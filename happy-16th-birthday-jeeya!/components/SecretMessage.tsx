@@ -145,9 +145,53 @@ const SecretMessage: React.FC<SecretMessageProps> = ({ isOpen, onClose }) => {
                                 )}
 
                                 {isUnwrapped && isLoading && (
-                                    <motion.div key="loading" initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}} className="flex flex-col items-center gap-2">
-                                        <div className="w-8 h-8 border-4 border-dashed rounded-full animate-spin border-brand-primary"></div>
-                                        <p className="text-brand-text/70">Contacting the magical workshop...</p>
+                                    <motion.div
+                                        key="loading"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        className="flex flex-col items-center justify-center gap-4 text-center"
+                                    >
+                                        <div className="relative w-20 h-20">
+                                            <motion.div
+                                                className="absolute inset-0 border-4 border-brand-primary rounded-full"
+                                                animate={{
+                                                    scale: [1, 1.3, 1],
+                                                    opacity: [0.5, 1, 0.5],
+                                                    rotate: [0, 180, 360],
+                                                }}
+                                                transition={{
+                                                    duration: 2.5,
+                                                    repeat: Infinity,
+                                                    ease: 'easeInOut',
+                                                }}
+                                            />
+                                            <motion.div
+                                                className="absolute inset-4 border-2 border-brand-accent rounded-full"
+                                                animate={{
+                                                    scale: [1, 0.7, 1],
+                                                    opacity: [1, 0.5, 1],
+                                                    rotate: [360, 180, 0],
+                                                }}
+                                                transition={{
+                                                    duration: 2.5,
+                                                    repeat: Infinity,
+                                                    ease: 'easeInOut',
+                                                }}
+                                            />
+                                            <motion.div
+                                                className="absolute inset-8 bg-white rounded-full"
+                                                animate={{
+                                                    scale: [1, 1.5, 1],
+                                                }}
+                                                transition={{
+                                                    duration: 1.25,
+                                                    repeat: Infinity,
+                                                    ease: 'easeInOut',
+                                                }}
+                                            />
+                                        </div>
+                                        <p className="text-brand-text/80 font-serif mt-4">Unwrapping your surprise...</p>
                                     </motion.div>
                                 )}
 

@@ -7,19 +7,23 @@ interface FooterProps {
 
 const Footer: React.FC<FooterProps> = ({ onSecretClick }) => {
   return (
-    <footer className="text-center p-8 text-brand-text/60 relative">
-      {/* Converted the button into a Floating Action Button (FAB) visible on all screen sizes */}
-      <div className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-30">
-         <button 
-            onClick={onSecretClick}
-            className="p-4 bg-brand-accent/20 hover:bg-brand-accent/40 rounded-full transition-colors animate-pulsate-slow shadow-lg"
-            aria-label="A special message"
-          >
-            <StarIcon />
-          </button>
-      </div>
+    <footer className="text-center p-8 pb-28 md:pb-8 text-brand-text/60 relative">
       <p>Made with ❤️ for the best 16-year-old in the universe.</p>
       <p>&copy; {new Date().getFullYear()} Jeeya's Birthday Crew</p>
+
+      {/* Secret message button integrated into the footer flow */}
+      <div className="mt-6">
+         <button 
+            onClick={onSecretClick}
+            className="inline-flex items-center gap-2 text-brand-accent/80 hover:text-brand-accent transition-colors duration-300 group"
+            aria-label="A special message"
+          >
+            <div className="p-2 bg-brand-accent/10 group-hover:bg-brand-accent/20 rounded-full transition-colors duration-300">
+              <StarIcon />
+            </div>
+            <span className="font-serif">Psst... there's a secret message!</span>
+          </button>
+      </div>
     </footer>
   );
 };
