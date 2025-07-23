@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import type { Photo, SectionId } from './constants.tsx';
-import { initialPhotos } from './constants.tsx';
 import * as photoService from './services/photoService.ts';
 
 import InteractiveBackground from './components/shared/InteractiveBackground.tsx';
@@ -44,8 +43,8 @@ const App: React.FC = () => {
       }
       
       setGalleryError(specificErrorMessage);
-      // Only fallback to placeholders on a genuine fetch error.
-      setPhotos(initialPhotos);
+      // On error, we'll show an empty gallery with an error message.
+      setPhotos([]);
     } finally {
       setIsGalleryLoading(false);
     }
@@ -57,12 +56,7 @@ const App: React.FC = () => {
 
   const handleNewPhotoAdded = useCallback((newPhoto: Photo) => {
     // Optimistically add the new photo to the start of the list.
-    // This provides immediate feedback and avoids issues with storage replication delay.
-    setPhotos(prevPhotos => {
-        // If the gallery was showing placeholders, clear them out first.
-        const currentPhotos = prevPhotos.filter(p => !p.id.startsWith('gallery-placeholder-'));
-        return [newPhoto, ...currentPhotos];
-    });
+    setPhotos(prevPhotos => [newPhoto, ...prevPhotos]);
     // Optional: scroll to gallery to see the change
     document.getElementById('gallery')?.scrollIntoView({ behavior: 'smooth' });
   }, []);
@@ -77,7 +71,7 @@ const App: React.FC = () => {
       <InteractiveBackground />
       <Navbar activeSection={activeSection} />
 
-      <main className="overflow-x-hidden">
+      <main className="overflow-x-hidden pb-24 md:pb-0">
         {/* The Hero component is no longer inside a Section wrapper to allow its background to fill the screen. */}
         {/* We use motion.div here to attach the onViewportEnter event for the navbar state. */}
         <motion.div id="home" onViewportEnter={() => handleInView('home')}>

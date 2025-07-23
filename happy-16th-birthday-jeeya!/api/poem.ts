@@ -15,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   
   if (!process.env.API_KEY) {
-      return res.status(500).json({ error: 'API key not configured on the server.' });
+      return res.status(500).json({ error: 'Gemini API key is not configured. Please add the API_KEY environment variable in your Vercel project settings.' });
   }
 
   try {

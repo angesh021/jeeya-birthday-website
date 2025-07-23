@@ -2,23 +2,16 @@
 import { kv } from '@vercel/kv';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-interface Wish {
-  id: string;
-  name: string;
-  message: string;
-  createdAt: number;
-}
-
 const WISHES_KEY = 'wishes';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
-        return res.status(500).json({ error: 'KV storage not configured on the server. Please set up Vercel KV and environment variables.' });
+        return res.status(500).json({ error: 'KV storage is not configured. Please link Vercel KV to your project in the Vercel dashboard.' });
     }
 
     if (req.method === 'GET') {
         try {
-            const wishIds = await kv.zrevrange(WISHES_KEY, 0, -1) as string[];
+            const wishIds = await kv.zrange<string[]>(WISHES_KEY, 0, -1, { rev: true });
             if (wishIds.length === 0) {
                 return res.status(200).json([]);
             }
@@ -45,7 +38,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             const createdAt = Date.now();
             const id = `${createdAt}-${Math.random().toString(36).slice(2)}`;
-            const newWish: Wish = { id, name, message, createdAt };
+            
+            // Explicitly type `newWish` as a Record to match the `hset` function's expectation.
+            const newWish: Record<string, string | number> = { 
+                id, 
+                name, 
+                message, 
+                createdAt 
+            };
 
             const pipeline = kv.pipeline();
             pipeline.hset(`wish:${id}`, newWish);

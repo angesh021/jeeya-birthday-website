@@ -56,13 +56,6 @@ export const timelineEvents: TimelineEvent[] = [
   { year: '2025', title: 'Sweet Sixteen!', description: 'Sixteen candles, a world of dreams. This is your year to shine!', icon: <CakeIcon /> },
 ];
 
-export const initialPhotos: Photo[] = [
-  { id: 'gallery-placeholder-1', url: 'https://images.unsplash.com/photo-1599420186946-7b6fb4e297f0?q=80&w=600', author: 'Awaiting Your Memories' },
-  { id: 'gallery-placeholder-2', url: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=600', author: 'Fun Times Ahead' },
-  { id: 'gallery-placeholder-3', url: 'https://images.unsplash.com/photo-1504196606610-a27927d23014?q=80&w=600', author: 'Celebrate Good Times' },
-  { id: 'gallery-placeholder-4', url: 'https://images.unsplash.com/photo-1519669556878-63bd585e4849?q=80&w=600', author: 'Sweet Sixteen' },
-];
-
 export const stickers: Sticker[] = [
   { id: 'sticker-1', src: 'https://em-content.zobj.net/source/microsoft-teams/363/partying-face_1f973.png', alt: 'Partying Face' },
   { id: 'sticker-2', src: 'https://em-content.zobj.net/source/microsoft-teams/363/birthday-cake_1f382.png', alt: 'Birthday Cake' },

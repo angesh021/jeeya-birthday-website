@@ -17,6 +17,7 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [author, setAuthor] = useState('');
+    const [description, setDescription] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
 
@@ -67,7 +68,7 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
                 reader.onerror = (error) => reject(error);
             });
             
-            const newPhoto = await addPhoto({ url: base64Url, author, description: 'Uploaded from the gallery' });
+            const newPhoto = await addPhoto({ url: base64Url, author, description });
             onUpload(newPhoto);
             onClose();
 
@@ -97,8 +98,8 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
             >
                 <button onClick={onClose} className="absolute top-4 right-4 text-3xl leading-none">&times;</button>
                 <h3 id="upload-modal-title" className="text-2xl font-bold mb-4">Upload a Memory</h3>
-                <form onSubmit={handleSubmit}>
-                    <div className="mb-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
                         <label htmlFor="file-upload" className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-primary/20 file:text-brand-primary hover:file:bg-brand-primary/30 cursor-pointer flex items-center">
                             <span className="bg-brand-primary text-white font-bold py-2 px-4 rounded-full transition-colors mr-4">Choose File</span>
                             <span className="text-brand-text/70">{file ? file.name : 'No file selected...'}</span>
@@ -106,8 +107,20 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
                         <input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" required/>
                         {preview && <img src={preview} alt="Preview" className="mt-4 rounded-lg max-h-40 mx-auto"/>}
                     </div>
-                    <div className="mb-4">
-                        <input type="text" value={author} onChange={e => setAuthor(e.target.value)} placeholder="Your Name" className="w-full bg-brand-background p-3 rounded-md border border-white/20 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition" required />
+                    <div>
+                        <label htmlFor="description" className="sr-only">Description</label>
+                         <textarea
+                            id="description"
+                            value={description}
+                            onChange={e => setDescription(e.target.value)}
+                            placeholder="Add a fun description... (optional)"
+                            className="w-full bg-brand-background p-3 rounded-md border border-white/20 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition"
+                            rows={3}
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="author" className="sr-only">Your Name</label>
+                        <input type="text" id="author" value={author} onChange={e => setAuthor(e.target.value)} placeholder="Your Name" className="w-full bg-brand-background p-3 rounded-md border border-white/20 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition" required />
                     </div>
                     {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
                     <button type="submit" disabled={isUploading || !file || !author} className="w-full bg-brand-primary text-white font-bold py-3 px-4 rounded-full disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors">
@@ -195,17 +208,24 @@ const Gallery: React.FC<GalleryProps> = ({ photos, onNewPhoto, isLoading, error,
         </div>
       )}
       
-      <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4 mt-8">
+      <div className="columns-2 md:columns-3 gap-4 space-y-4 mt-8">
         {photos.map((photo) => (
           <motion.div
             key={photo.id}
             layout
-            className="break-inside-avoid cursor-pointer"
-            whileHover={{ scale: 1.03, y: -5 }}
-            onClick={() => setSelectedImg(photo)}
+            className="break-inside-avoid"
           >
-            <img src={photo.url} alt={`Memory from ${photo.author}`} className="w-full h-auto rounded-lg shadow-lg" />
-            <p className="mt-1 text-sm text-center text-brand-text/70">{photo.author}</p>
+            <motion.div 
+                className="bg-brand-surface/40 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden cursor-pointer border border-white/10"
+                whileHover={{ scale: 1.03, y: -5, boxShadow: '0 10px 20px rgba(233, 69, 96, 0.15)' }}
+                onClick={() => setSelectedImg(photo)}
+            >
+                <img src={photo.url} alt={photo.description || `A memory from ${photo.author}`} className="w-full h-auto" />
+                <div className="p-3 text-left">
+                    {photo.description && <p className="text-sm text-brand-text/90 mb-2 italic">"{photo.description}"</p>}
+                    <p className="font-semibold text-sm text-brand-secondary text-right">- {photo.author}</p>
+                </div>
+            </motion.div>
           </motion.div>
         ))}
       </div>
@@ -224,17 +244,18 @@ const Gallery: React.FC<GalleryProps> = ({ photos, onNewPhoto, isLoading, error,
             <motion.img
               layoutId={selectedImg.id}
               src={selectedImg.url}
-              alt={`Memory from ${selectedImg.author}`}
+              alt={selectedImg.description || `A memory from ${selectedImg.author}`}
               className="max-w-[90vw] max-h-[80vh] object-contain rounded-lg shadow-2xl"
             />
-             <motion.p 
-                className="absolute bottom-10 text-lg text-white"
+             <motion.div 
+                className="absolute bottom-10 left-10 right-10 text-center bg-black/60 p-4 rounded-xl backdrop-blur-sm border border-white/20"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.2 }}
              >
-                A beautiful memory from {selectedImg.author}
-             </motion.p>
+                {selectedImg.description && <p className="text-lg text-white font-serif mb-1">"{selectedImg.description}"</p>}
+                <p className="text-md text-white/80">Uploaded by {selectedImg.author}</p>
+             </motion.div>
           </motion.div>
         )}
         {isUploadModalOpen && (

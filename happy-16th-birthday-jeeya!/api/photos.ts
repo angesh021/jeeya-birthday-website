@@ -12,7 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const kvToken = process.env.KV_REST_API_TOKEN;
 
     if (!blobToken || !kvUrl || !kvToken) {
-        return res.status(500).json({ error: 'Storage services are not configured on the server.' });
+        return res.status(500).json({ error: 'Storage services are not configured. Please link Vercel Blob and KV to your project in the Vercel dashboard and ensure environment variables are set.' });
     }
 
     if (req.method === 'GET') {
