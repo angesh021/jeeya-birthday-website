@@ -33,3 +33,14 @@ export const addWish = async (wishData: { name: string; message: string }): Prom
     }
     return response.json();
 };
+
+export const likeWish = async (id: string): Promise<{ likes: number }> => {
+    const response = await fetch(`${API_BASE}/api/wishes?id=${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+    });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Could not like the wish.');
+    }
+    return response.json();
+}

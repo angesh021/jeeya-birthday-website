@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import type { Photo, SectionId } from './constants.tsx';
+import { demoPhotos } from './constants.tsx';
 import * as photoService from './services/photoService.ts';
 
 import InteractiveBackground from './components/shared/InteractiveBackground.tsx';
@@ -31,20 +32,26 @@ const App: React.FC = () => {
     setGalleryError(null);
     try {
       const fetchedPhotos = await photoService.getPhotos();
-      // On success, set the photos directly. The Gallery component will handle the empty case.
       setPhotos(fetchedPhotos);
     } catch (error) {
       console.error("Photo fetching error:", error);
       let specificErrorMessage = 'A mysterious error occurred while fetching memories.';
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        specificErrorMessage = "Could not connect to the photo API. Please ensure the local development server (`vercel dev`) is running and try again.";
-      } else if (error instanceof Error) {
-        specificErrorMessage = error.message;
+      if (error instanceof Error) {
+          // Check for specific configuration error message
+          if (error.message.includes('not configured')) {
+              setGalleryError('DEMO_MODE');
+              setPhotos(demoPhotos);
+          } else {
+              specificErrorMessage = error.message.includes('Failed to fetch') 
+                  ? "Could not connect to the photo API. Please ensure the local development server (`vercel dev`) is running."
+                  : error.message;
+              setGalleryError(specificErrorMessage);
+              setPhotos([]);
+          }
+      } else {
+         setGalleryError(specificErrorMessage);
+         setPhotos([]);
       }
-      
-      setGalleryError(specificErrorMessage);
-      // On error, we'll show an empty gallery with an error message.
-      setPhotos([]);
     } finally {
       setIsGalleryLoading(false);
     }

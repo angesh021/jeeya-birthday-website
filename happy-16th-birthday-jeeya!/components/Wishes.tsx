@@ -1,32 +1,107 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Wish } from '../constants.tsx';
+import { demoWishes } from '../constants.tsx';
 import * as wishService from '../services/wishService.ts';
 
-const QuoteIcon: React.FC = () => (
-    <svg className="w-24 h-24 text-brand-accent/10 absolute -top-8 -left-8 transform rotate-[-15deg] pointer-events-none" fill="currentColor" viewBox="0 0 448 512" aria-hidden="true">
-        <path d="M448 296c0 66.3-53.7 120-120 120h-8c-17.7 0-32-14.3-32-32s14.3-32 32-32h8c30.9 0 56-25.1 56-56v-8H320c-35.3 0-64-28.7-64-64V128c0-35.3 28.7-64 64-64h96c35.3 0 64 28.7 64 64v168zm-256 0c0 66.3-53.7 120-120 120H64c-17.7 0-32-14.3-32-32s14.3-32 32-32h8c30.9 0 56-25.1 56-56v-8H64c-35.3 0-64-28.7-64-64V128c0-35.3 28.7-64 64-64h96c35.3 0 64 28.7 64 64v168z"/>
-    </svg>
+declare global {
+    interface Window {
+        confetti: (options: any) => void;
+    }
+}
+
+const LikeHeartIcon: React.FC<{isLiked: boolean}> = ({ isLiked }) => (
+    <motion.svg 
+      className={`w-6 h-6 transition-colors ${isLiked ? 'text-brand-primary' : 'text-brand-text/50'}`} 
+      viewBox="0 0 24 24" 
+      fill={isLiked ? "currentColor" : "none"} 
+      stroke="currentColor" 
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+    >
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+    </motion.svg>
 );
 
 
-const WishCard: React.FC<{ wish: Wish }> = ({ wish }) => {
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 50, scale: 0.8 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -20, scale: 0.8, transition: { duration: 0.2 } }}
-      transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-      className="bg-gradient-to-br from-brand-surface to-[#2a215a] p-6 rounded-xl shadow-lg border border-white/10 break-inside-avoid relative overflow-hidden"
-    >
-      <QuoteIcon />
-      <p className="font-serif text-lg text-brand-text/90 mb-4 z-10 relative">"{wish.message}"</p>
-      <p className="text-right font-script text-2xl text-brand-secondary">- {wish.name}</p>
-    </motion.div>
-  );
+const Avatar: React.FC<{ name: string }> = ({ name }) => {
+    const initials = (name || 'G').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+    const colors = ['bg-pink-500', 'bg-purple-500', 'bg-indigo-500', 'bg-blue-500', 'bg-teal-500', 'bg-orange-500'];
+    const colorIndex = name ? name.charCodeAt(0) % colors.length : 0;
+    const color = colors[colorIndex];
+    return (
+        <div className={`w-12 h-12 rounded-full ${color} flex-shrink-0 flex items-center justify-center text-white font-bold text-lg shadow-md`}>
+            {initials}
+        </div>
+    );
 };
+
+const WishCard: React.FC<{ wish: Wish; onLike: (id: string) => void }> = ({ wish, onLike }) => {
+    const [isLiked, setIsLiked] = useState(false);
+    const [particles, setParticles] = useState<{id: number}[]>([]);
+
+    const handleLike = () => {
+        if (isLiked) return;
+        setIsLiked(true);
+        onLike(wish.id);
+        
+        // Trigger particle animation
+        const newParticles = Array.from({ length: 10 }).map(() => ({ id: Math.random() }));
+        setParticles(newParticles);
+        setTimeout(() => setParticles([]), 1000); // Cleanup particles after animation
+    };
+
+    return (
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+            transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+            className="bg-brand-surface/40 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10"
+        >
+            <div className="flex items-start gap-4">
+                <Avatar name={wish.name} />
+                <div className="flex-grow">
+                    <p className="font-bold text-brand-text text-lg">{wish.name}</p>
+                    <p className="text-sm text-brand-text/60">{new Date(wish.createdAt || 0).toLocaleString()}</p>
+                </div>
+            </div>
+            <p className="font-serif text-lg text-brand-text/90 my-4">"{wish.message}"</p>
+            <div className="flex justify-end items-center gap-2 relative">
+                <AnimatePresence>
+                {particles.map(p => (
+                    <motion.div
+                        key={p.id}
+                        className="absolute bottom-0 right-2 text-brand-primary"
+                        initial={{ y: 0, opacity: 1, scale: 0.5 }}
+                        animate={{ 
+                            y: -60, 
+                            x: (Math.random() - 0.5) * 40,
+                            scale: Math.random() * 0.5 + 1,
+                            opacity: 0,
+                        }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                    >
+                         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                    </motion.div>
+                ))}
+                </AnimatePresence>
+
+                <button onClick={handleLike} className="flex items-center gap-2 group" aria-label={`Like wish from ${wish.name}`}>
+                    <LikeHeartIcon isLiked={isLiked} />
+                    <span className={`font-semibold text-sm transition-colors ${isLiked ? 'text-brand-primary' : 'text-brand-text/70 group-hover:text-brand-text'}`}>
+                        {wish.likes || 0}
+                    </span>
+                </button>
+            </div>
+        </motion.div>
+    );
+};
+
 
 const Wishes: React.FC = () => {
   const [wishes, setWishes] = useState<Wish[]>([]);
@@ -36,19 +111,35 @@ const Wishes: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
 
-  const fetchWishes = useCallback(async () => {
-    setIsLoading(true);
+  const isDemoMode = error === 'DEMO_MODE';
+
+  const fetchWishes = useCallback(async (isPoll = false) => {
+    if (!isPoll) setIsLoading(true);
     setError(null);
     try {
         const fetchedWishes = await wishService.getWishes();
-        setWishes(fetchedWishes);
+        setWishes(prevWishes => {
+            const wishMap = new Map(prevWishes.map(w => [w.id, w]));
+            fetchedWishes.forEach(fw => wishMap.set(fw.id, fw));
+            const newWishes = Array.from(wishMap.values());
+            newWishes.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            return newWishes;
+        });
     } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Could not fetch wishes.';
-        setError(errorMessage);
-        setWishes([]);
+        if (!isPoll) {
+             const errorMessage = err instanceof Error ? err.message : 'Could not fetch wishes.';
+            if (errorMessage.includes('not configured') || errorMessage.includes('missing')) {
+                setError('DEMO_MODE');
+                setWishes(demoWishes);
+            } else {
+                setError(errorMessage);
+                setWishes([]);
+            }
+        }
     } finally {
-        setIsLoading(false);
+        if (!isPoll) setIsLoading(false);
     }
   }, []);
 
@@ -56,11 +147,20 @@ const Wishes: React.FC = () => {
     fetchWishes();
   }, [fetchWishes]);
 
+  // Polling for new wishes
+  useEffect(() => {
+    const interval = setInterval(() => {
+        if (!document.hidden && !isSubmitting) {
+            fetchWishes(true);
+        }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [isSubmitting, fetchWishes]);
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !message.trim() || isSubmitting) {
-        return;
-    }
+    if (!name.trim() || !message.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
     setSubmitError(null);
@@ -68,6 +168,21 @@ const Wishes: React.FC = () => {
     try {
         const newWish = await wishService.addWish({ name, message });
         setWishes(prevWishes => [newWish, ...prevWishes]);
+        
+        // Confetti animation!
+        if (typeof window.confetti === 'function' && submitButtonRef.current) {
+            const rect = submitButtonRef.current.getBoundingClientRect();
+            window.confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { 
+                    x: (rect.left + rect.width / 2) / window.innerWidth,
+                    y: (rect.top + rect.height / 2) / window.innerHeight,
+                },
+                colors: ['#e94560', '#ff7675', '#fdcb6e', '#f0f0f0']
+            });
+        }
+        
         setName('');
         setMessage('');
     } catch (err) {
@@ -78,6 +193,18 @@ const Wishes: React.FC = () => {
     }
   };
 
+  const handleLike = useCallback(async (id: string) => {
+        // Optimistic update
+        setWishes(prev => prev.map(w => w.id === id ? {...w, likes: (w.likes || 0) + 1} : w));
+        try {
+            await wishService.likeWish(id);
+        } catch (error) {
+            console.error("Failed to like wish:", error);
+            // Revert on error
+            setWishes(prev => prev.map(w => w.id === id ? {...w, likes: (w.likes || 0) - 1} : w));
+        }
+    }, []);
+
   return (
     <div className="py-16">
       <motion.h2 
@@ -87,65 +214,74 @@ const Wishes: React.FC = () => {
         viewport={{ once: true }}
         transition={{ duration: 0.5 }}
       >
-        Birthday Wishes
+        Wishes From The Heart
       </motion.h2>
 
-      <div className="grid md:grid-cols-12 gap-12 items-start">
+      <div className="grid lg:grid-cols-12 gap-12 items-start max-w-6xl mx-auto">
         <motion.div 
-            className="md:col-span-5 lg:col-span-4"
+            className="lg:col-span-4"
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <div className="bg-brand-surface/70 p-8 rounded-xl sticky top-24">
-            <h3 className="text-3xl font-bold mb-4">Leave a Message</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-brand-text/80 mb-1">Your Name</label>
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Your Bestie"
-                  className="w-full bg-brand-background p-3 rounded-md border border-white/20 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium text-brand-text/80 mb-1">Your Wish</label>
-                <textarea
-                  id="message"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  rows={4}
-                  placeholder="Share a happy memory or a wish..."
-                  className="w-full bg-brand-background p-3 rounded-md border border-white/20 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition"
-                  required
-                />
-              </div>
-              {submitError && <p className="text-red-500 text-sm text-center">{submitError}</p>}
-              <button
-                type="submit"
-                disabled={isSubmitting || isLoading}
-                className="w-full bg-gradient-to-r from-brand-primary to-brand-secondary text-white font-bold py-3 px-4 rounded-full disabled:opacity-50 transition-all transform hover:scale-105"
-              >
-                {isSubmitting ? 'Sending...' : 'Send Your Wish'}
-              </button>
-            </form>
+          <div className="bg-gradient-to-br from-brand-surface/80 to-brand-surface/50 backdrop-blur-lg p-8 rounded-2xl shadow-xl sticky top-24 border border-white/10">
+            <h3 className="text-3xl font-bold mb-4 font-serif text-brand-accent">Leave a Message</h3>
+            
+            <fieldset disabled={isSubmitting || isLoading || isDemoMode} className="group">
+                {isDemoMode && (
+                    <div className="text-center bg-brand-accent/10 p-3 rounded-lg mb-4 border border-brand-accent/30">
+                        <p className="font-bold text-brand-accent text-sm">Demo Mode</p>
+                        <p className="text-xs text-brand-text/80">Connect Vercel KV to enable live wishes.</p>
+                    </div>
+                )}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label htmlFor="name" className="sr-only">Your Name</label>
+                    <input
+                      id="name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Your Name (e.g., Your Bestie)"
+                      className="w-full bg-brand-background/50 p-3 rounded-md border border-white/20 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition disabled:opacity-50"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="message" className="sr-only">Your Wish</label>
+                    <textarea
+                      id="message"
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      rows={4}
+                      placeholder="Share a happy memory or a wish..."
+                      className="w-full bg-brand-background/50 p-3 rounded-md border border-white/20 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition disabled:opacity-50"
+                      required
+                    />
+                  </div>
+                  {submitError && <p className="text-red-400 text-sm text-center">{submitError}</p>}
+                  <button
+                    ref={submitButtonRef}
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-brand-primary to-brand-secondary text-white font-bold py-3 px-4 rounded-full disabled:opacity-50 transition-all transform group-enabled:hover:scale-105 group-enabled:hover:shadow-lg group-enabled:hover:shadow-brand-primary/20"
+                  >
+                    {isSubmitting ? 'Sending...' : 'Send Your Wish'}
+                  </button>
+                </form>
+            </fieldset>
           </div>
         </motion.div>
 
-        <div className="md:col-span-7 lg:col-span-8">
+        <div className="lg:col-span-8">
             {isLoading && <p className="text-center text-brand-text/70">Loading wishes from across the universe...</p>}
-            {error && !isLoading && <p className="text-center text-red-400 bg-red-900/20 p-3 rounded-md">{error}</p>}
+            {error && !isDemoMode && !isLoading && <p className="text-center text-red-400 bg-red-900/20 p-3 rounded-md">{error}</p>}
             {!isLoading && !error && wishes.length === 0 && <p className="text-center text-brand-text/70">Be the first to leave a wish!</p>}
             
-            <div className="columns-1 sm:columns-2 gap-6 space-y-6">
+            <div className="space-y-6">
                 <AnimatePresence>
                     {wishes.map((wish) => (
-                        <WishCard key={wish.id} wish={wish} />
+                        <WishCard key={wish.id} wish={wish} onLike={handleLike} />
                     ))}
                 </AnimatePresence>
             </div>

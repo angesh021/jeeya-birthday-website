@@ -13,6 +13,14 @@ interface GalleryProps {
   onRetry: () => void;
 }
 
+const DemoModeBanner = () => (
+    <div className="text-center bg-brand-accent/10 p-4 rounded-lg mb-8 border border-brand-accent/30">
+        <p className="font-bold text-brand-accent">Demo Mode</p>
+        <p className="text-sm text-brand-text/80">Live gallery is offline. Connect Vercel Blob &amp; KV in your project settings to enable photo uploads.</p>
+    </div>
+);
+
+
 const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => void }> = ({ onClose, onUpload }) => {
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
@@ -55,7 +63,7 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!file || !author.trim() || isUploading) return;
+        if (!file || !author.trim() || !description.trim() || isUploading) return;
         
         setIsUploading(true);
         setError('');
@@ -106,9 +114,10 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
                             id="description"
                             value={description}
                             onChange={e => setDescription(e.target.value)}
-                            placeholder="Add a fun description... (optional)"
+                            placeholder="Add a fun description..."
                             className="w-full bg-brand-background p-3 rounded-md border border-white/20 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition"
                             rows={3}
+                            required
                         />
                     </div>
                     <div>
@@ -116,7 +125,7 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
                         <input type="text" id="author" value={author} onChange={e => setAuthor(e.target.value)} placeholder="Your Name" className="w-full bg-brand-background p-3 rounded-md border border-white/20 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition" required />
                     </div>
                     {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
-                    <button type="submit" disabled={isUploading || !file || !author} className="w-full bg-brand-primary text-white font-bold py-3 px-4 rounded-full disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors">
+                    <button type="submit" disabled={isUploading || !file || !author.trim() || !description.trim()} className="w-full bg-brand-primary text-white font-bold py-3 px-4 rounded-full disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors">
                         {isUploading ? 'Uploading...' : 'Add Memory'}
                     </button>
                 </form>
@@ -129,7 +138,8 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
 const Gallery: React.FC<GalleryProps> = ({ photos, onNewPhoto, isLoading, error, onRetry }) => {
   const [selectedImg, setSelectedImg] = useState<Photo | null>(null);
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
-  
+  const isDemoMode = error === 'DEMO_MODE';
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
@@ -163,10 +173,17 @@ const Gallery: React.FC<GalleryProps> = ({ photos, onNewPhoto, isLoading, error,
         viewport={{ once: true }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        <button onClick={() => setUploadModalOpen(true)} className="px-6 py-3 bg-brand-accent text-brand-background font-bold rounded-full shadow-lg transform hover:scale-105 transition-transform">
+        <button 
+            onClick={() => setUploadModalOpen(true)} 
+            className="px-6 py-3 bg-brand-accent text-brand-background font-bold rounded-full shadow-lg transform hover:scale-105 transition-transform disabled:bg-gray-500 disabled:cursor-not-allowed disabled:transform-none"
+            disabled={isDemoMode}
+            title={isDemoMode ? "Uploads are disabled in demo mode" : "Upload a Memory"}
+        >
             + Upload a Memory
         </button>
       </motion.div>
+      
+      {isDemoMode && <DemoModeBanner />}
         
       {isLoading && (
         <div className="text-center py-10">
@@ -179,7 +196,7 @@ const Gallery: React.FC<GalleryProps> = ({ photos, onNewPhoto, isLoading, error,
         </div>
       )}
       
-      {error && !isLoading && (
+      {error && !isDemoMode && !isLoading && (
         <motion.div 
             className="text-center bg-brand-surface/40 backdrop-blur-sm p-8 rounded-2xl max-w-2xl mx-auto border border-brand-primary/20 shadow-xl"
             initial={{ opacity: 0, y: 20 }}

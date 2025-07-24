@@ -32,12 +32,15 @@ export const addPhoto = async (photoData: { file: File; author: string; descript
     const { file, author, description } = photoData;
     const url = `${API_BASE}/api/photos?filename=${encodeURIComponent(file.name)}&author=${encodeURIComponent(author)}&description=${encodeURIComponent(description)}`;
 
+    // Convert the file to an ArrayBuffer for a more robust upload.
+    const fileBuffer = await file.arrayBuffer();
+
     const response = await fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': file.type,
         },
-        body: file,
+        body: fileBuffer,
     });
     
     if (!response.ok) {

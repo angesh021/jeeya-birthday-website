@@ -2,18 +2,27 @@
 import { createClient, type RedisClientType } from 'redis';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// --- Vercel Storage Configuration Guide ---
+// This function connects to Vercel Redis for storing wishes.
+// It relies on the REDIS_URL environment variable, which is AUTOMATICALLY set when you
+// link a Redis store to your project in the Vercel Dashboard.
+//
+// TROUBLESHOOTING:
+// - If you get errors, go to your project's "Storage" tab on Vercel and ensure Redis is linked.
+// - For local development, you MUST use the `vercel dev` command to load this variable.
+
 const WISHES_KEY = 'wishes';
 
 // It's a good practice to have a single client instance for a serverless function instance.
 let redis: RedisClientType | undefined;
 
 async function getRedisClient() {
-    if (!process.env.KV_URL) {
-        throw new Error('KV_URL environment variable is not set. Please link Vercel KV to your project.');
+    if (!process.env.REDIS_URL) {
+        throw new Error('REDIS_URL environment variable is not set. Please link Vercel Redis to your project.');
     }
     if (!redis) {
        redis = createClient({
-            url: process.env.KV_URL,
+            url: process.env.REDIS_URL,
         });
        // Optional: Log errors for debugging
        redis.on('error', (err) => console.error('Redis Client Error', err));
@@ -26,8 +35,10 @@ async function getRedisClient() {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    if (!process.env.KV_URL) {
-        return res.status(500).json({ error: 'KV storage is not configured. Please set the KV_URL environment variable in your Vercel project.' });
+    if (!process.env.REDIS_URL) {
+        const errorMessage = 'Redis storage is not configured. The `REDIS_URL` environment variable is missing. Please link a Vercel Redis store to your project.';
+        console.error(errorMessage);
+        return res.status(500).json({ error: errorMessage });
     }
 
     try {
@@ -52,6 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 .map(wish => ({
                     ...wish,
                     createdAt: wish.createdAt ? parseInt(wish.createdAt, 10) : 0,
+                    likes: wish.likes ? parseInt(wish.likes, 10) : 0,
                 }));
 
             return res.status(200).json(validWishes);
@@ -72,12 +84,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 name, 
                 message, 
                 createdAt: createdAt.toString(),
+                likes: '0',
             };
             
             // Data to be returned to the client.
             const wishToReturn = {
                 ...wishToStore,
                 createdAt, // return as a number
+                likes: 0,
             }
 
             const multi = redisClient.multi();
@@ -88,7 +102,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(201).json(wishToReturn);
         }
 
-        res.setHeader('Allow', ['GET', 'POST']);
+        if (req.method === 'PATCH') {
+            const { id } = req.query;
+            if (!id || typeof id !== 'string') {
+                return res.status(400).json({ error: 'A wish ID is required.' });
+            }
+
+            const newLikes = await redisClient.hIncrBy(`wish:${id}`, 'likes', 1);
+
+            return res.status(200).json({ likes: newLikes });
+        }
+
+
+        res.setHeader('Allow', ['GET', 'POST', 'PATCH']);
         return res.status(405).end(`Method ${req.method} Not Allowed`);
 
     } catch (error) {

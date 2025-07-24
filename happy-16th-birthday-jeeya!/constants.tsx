@@ -15,6 +15,7 @@ export interface Wish {
   name: string;
   message: string;
   createdAt?: number;
+  likes?: number;
 }
 
 export interface TimelineEvent {
@@ -72,4 +73,22 @@ export const navLinks: { id: SectionId; title: string, icon: React.ReactNode }[]
     { id: 'wishes', title: 'Wishes', icon: <WishesIcon /> },
     { id: 'photobooth', title: 'Booth', icon: <PhotoBoothIcon /> },
     { id: 'poem', title: 'Poem', icon: <PoemIcon /> },
+];
+
+// --- DEMO DATA FOR FALLBACK ---
+
+export const demoPhotos: Photo[] = [
+    { id: 'demo-1', url: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=800', author: 'A Friend', description: 'That time we decorated for the party!' },
+    { id: 'demo-2', url: 'https://images.unsplash.com/photo-1504196606610-a2cd6894585e?q=80&w=800', author: 'Cousin Mia', description: 'Happy memories from last summer\'s trip.' },
+    { id: 'demo-3', url: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=800', author: 'The Crew', description: 'Best concert ever!' },
+    { id: 'demo-4', url: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=800', author: 'Party People', description: 'Remember this amazing celebration?' },
+    { id: 'demo-5', url: 'https://images.unsplash.com/photo-1559809386-8239b0d19688?q=80&w=800', author: 'Your Family', description: 'A beautiful day with everyone.' },
+    { id: 'demo-6', url: 'https://images.unsplash.com/photo-1519211974-681561726a8d?q=80&w=800', author: 'BFFs', description: 'So much laughter and fun!' },
+];
+
+export const demoWishes: Wish[] = [
+    { id: 'demo-wish-1', name: 'Your Bestie', message: 'Happy Sweet 16, Jeeya! Cannot believe how fast time has flown. Here\'s to many more years of laughter, adventures, and being amazing. Love you!', createdAt: Date.now() - 100000, likes: 27 },
+    { id: 'demo-wish-2', name: 'Mom & Dad', message: 'To our dearest daughter, watching you grow into the incredible person you are has been our greatest joy. Happy 16th birthday. We love you more than words can say.', createdAt: Date.now() - 200000, likes: 42 },
+    { id: 'demo-wish-3', name: 'A Cool Aunt', message: 'Happy Birthday! Welcome to 16 - it\'s a blast. Always remember to be yourself and chase your dreams. So proud of you!', createdAt: Date.now() - 300000, likes: 18 },
+    { id: 'demo-wish-4', name: 'The Quiet Cousin', message: 'Happy birthday, Jeeya. Hope you have a great day.', createdAt: Date.now() - 400000, likes: 5 },
 ];
