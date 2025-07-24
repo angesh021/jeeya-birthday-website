@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Photo } from '../constants.tsx';
 import { addPhoto } from '../services/photoService.ts';
@@ -20,7 +20,6 @@ const DemoModeBanner = () => (
     </div>
 );
 
-
 const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => void }> = ({ onClose, onUpload }) => {
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
@@ -28,37 +27,43 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
     const [description, setDescription] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
+    const [isDragging, setIsDragging] = useState(false);
 
     const modalRef = useRef<HTMLDivElement>(null);
     useFocusTrap(modalRef, true);
 
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onClose();
-            }
-        };
+        const handleKeyDown = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
         document.addEventListener('keydown', handleKeyDown);
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown);
-        };
+        return () => document.removeEventListener('keydown', handleKeyDown);
     }, [onClose]);
+    
+    const processFile = (selectedFile: File) => {
+        if (selectedFile.size > 5 * 1024 * 1024) { // 5MB limit
+            setError('File is too large. Max 5MB.');
+            return;
+        }
+        if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(selectedFile.type)) {
+            setError('Invalid file type. Please use JPG, PNG, GIF, or WEBP.');
+            return;
+        }
+        setError('');
+        setFile(selectedFile);
+        if (preview) URL.revokeObjectURL(preview);
+        setPreview(URL.createObjectURL(selectedFile));
+    }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
-        if (selectedFile) {
-            if (selectedFile.size > 5 * 1024 * 1024) { // 5MB limit
-                setError('File is too large. Max 5MB.');
-                return;
-            }
-            if (!['image/jpeg', 'image/png', 'image/gif'].includes(selectedFile.type)) {
-                setError('Invalid file type. Please use JPG, PNG, or GIF.');
-                return;
-            }
-            setError('');
-            setFile(selectedFile);
-            setPreview(URL.createObjectURL(selectedFile));
-        }
+        if (selectedFile) processFile(selectedFile);
+    };
+    
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const droppedFile = e.dataTransfer.files?.[0];
+        if (droppedFile) processFile(droppedFile);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -72,7 +77,6 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
             const newPhoto = await addPhoto({ file, author, description });
             onUpload(newPhoto);
             onClose();
-
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
         } finally {
@@ -83,45 +87,33 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
     return (
         <motion.div 
           className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         >
             <motion.div 
-                ref={modalRef}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="upload-modal-title"
+                ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="upload-modal-title"
                 className="bg-brand-surface p-8 rounded-lg w-full max-w-md relative"
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
+                initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
             >
                 <button onClick={onClose} className="absolute top-4 right-4 text-3xl leading-none">&times;</button>
                 <h3 id="upload-modal-title" className="text-2xl font-bold mb-4">Upload a Memory</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label htmlFor="file-upload" className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-primary/20 file:text-brand-primary hover:file:bg-brand-primary/30 cursor-pointer flex items-center">
-                            <span className="bg-brand-primary text-white font-bold py-2 px-4 rounded-full transition-colors mr-4">Choose File</span>
-                            <span className="text-brand-text/70">{file ? file.name : 'No file selected...'}</span>
+                    <div 
+                        onDrop={handleDrop}
+                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                        onDragLeave={() => setIsDragging(false)}
+                        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging ? 'border-brand-primary bg-brand-primary/10' : 'border-brand-text/30'}`}
+                    >
+                        <input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                        <label htmlFor="file-upload" className="cursor-pointer">
+                            <p className="text-brand-text/70">{isDragging ? 'Drop the image here!' : 'Drag & drop an image or'}</p>
+                            <span className="font-bold text-brand-accent hover:underline">choose a file</span>
                         </label>
-                        <input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" required/>
                         {preview && <img src={preview} alt="Preview" className="mt-4 rounded-lg max-h-40 mx-auto"/>}
                     </div>
                     <div>
-                        <label htmlFor="description" className="sr-only">Description</label>
-                         <textarea
-                            id="description"
-                            value={description}
-                            onChange={e => setDescription(e.target.value)}
-                            placeholder="Add a fun description..."
-                            className="w-full bg-brand-background p-3 rounded-md border border-white/20 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition"
-                            rows={3}
-                            required
-                        />
+                        <textarea id="description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Add a fun description..." className="w-full bg-brand-background p-3 rounded-md border border-white/20 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition" rows={3} required />
                     </div>
                     <div>
-                        <label htmlFor="author" className="sr-only">Your Name</label>
                         <input type="text" id="author" value={author} onChange={e => setAuthor(e.target.value)} placeholder="Your Name" className="w-full bg-brand-background p-3 rounded-md border border-white/20 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition" required />
                     </div>
                     {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
@@ -135,56 +127,88 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
 };
 
 
+const Carousel: React.FC<{ photos: Photo[], selectedIndex: number, onClose: () => void }> = ({ photos, selectedIndex, onClose }) => {
+    const [[page, direction], setPage] = useState([selectedIndex, 0]);
+    
+    const paginate = (newDirection: number) => {
+        const newIndex = (page + newDirection + photos.length) % photos.length;
+        setPage([newIndex, newDirection]);
+    };
+    
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowRight') paginate(1);
+            if (e.key === 'ArrowLeft') paginate(-1);
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [page]);
+    
+    const carouselVariants = {
+        enter: (direction: number) => ({ x: direction > 0 ? '100%' : '-100%', opacity: 0 }),
+        center: { x: 0, opacity: 1 },
+        exit: (direction: number) => ({ x: direction < 0 ? '100%' : '-100%', opacity: 0 }),
+    };
+    
+    const photo = photos[page];
+
+    return (
+        <motion.div
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose} role="dialog" aria-modal="true"
+        >
+             <button onClick={() => paginate(-1)} className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/10 rounded-full text-white hover:bg-white/20">&lt;</button>
+             <button onClick={() => paginate(1)} className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/10 rounded-full text-white hover:bg-white/20">&gt;</button>
+             
+             <AnimatePresence initial={false} custom={direction}>
+                <motion.div
+                    key={page}
+                    custom={direction}
+                    variants={carouselVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{ x: { type: 'spring', stiffness: 300, damping: 30 }, opacity: { duration: 0.2 } }}
+                    className="w-full h-full flex flex-col items-center justify-center p-16"
+                    onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside carousel
+                >
+                     <motion.img
+                        layoutId={page === selectedIndex ? photo.id : undefined} // Only animate layout on first open
+                        src={photo.url}
+                        alt={photo.description || `A memory from ${photo.author}`}
+                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                     />
+                     <motion.div className="absolute bottom-10 left-10 right-10 text-center bg-black/60 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+                        {photo.description && <p className="text-lg text-white font-serif mb-1">"{photo.description}"</p>}
+                        <p className="text-md text-white/80">Uploaded by {photo.author}</p>
+                     </motion.div>
+                </motion.div>
+            </AnimatePresence>
+        </motion.div>
+    );
+};
+
+
 const Gallery: React.FC<GalleryProps> = ({ photos, onNewPhoto, isLoading, error, onRetry }) => {
-  const [selectedImg, setSelectedImg] = useState<Photo | null>(null);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
   const isDemoMode = error === 'DEMO_MODE';
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            setSelectedImg(null);
-        }
-    };
-    if (selectedImg) {
-        document.addEventListener('keydown', handleKeyDown);
-    }
-    return () => {
-        document.removeEventListener('keydown', handleKeyDown);
-    };
-}, [selectedImg]);
-
-
   return (
     <div className="py-16">
-      <motion.h2 
-        className="text-4xl md:text-6xl font-bold text-center mb-4"
-        initial={{ opacity: 0, y: -50 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5 }}
-      >
+      <motion.h2 className="text-4xl md:text-6xl font-bold text-center mb-4" initial={{ opacity: 0, y: -50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
         Memory Gallery
       </motion.h2>
-      <motion.div 
-        className="text-center mb-8"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        <button 
-            onClick={() => setUploadModalOpen(true)} 
-            className="px-6 py-3 bg-brand-accent text-brand-background font-bold rounded-full shadow-lg transform hover:scale-105 transition-transform disabled:bg-gray-500 disabled:cursor-not-allowed disabled:transform-none"
-            disabled={isDemoMode}
-            title={isDemoMode ? "Uploads are disabled in demo mode" : "Upload a Memory"}
-        >
+      <motion.div className="text-center mb-8" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }}>
+        <button onClick={() => setUploadModalOpen(true)} className="px-6 py-3 bg-brand-accent text-brand-background font-bold rounded-full shadow-lg transform hover:scale-105 transition-transform disabled:bg-gray-500 disabled:cursor-not-allowed disabled:transform-none" disabled={isDemoMode} title={isDemoMode ? "Uploads are disabled in demo mode" : "Upload a Memory"}>
             + Upload a Memory
         </button>
       </motion.div>
       
       {isDemoMode && <DemoModeBanner />}
-        
+      
       {isLoading && (
         <div className="text-center py-10">
             <div className="flex items-center justify-center gap-2 text-lg text-brand-text/80">
@@ -197,25 +221,11 @@ const Gallery: React.FC<GalleryProps> = ({ photos, onNewPhoto, isLoading, error,
       )}
       
       {error && !isDemoMode && !isLoading && (
-        <motion.div 
-            className="text-center bg-brand-surface/40 backdrop-blur-sm p-8 rounded-2xl max-w-2xl mx-auto border border-brand-primary/20 shadow-xl"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-        >
-            <div className="mx-auto mb-4 w-16 h-16 text-brand-primary/70">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
-            </div>
+         <motion.div className="text-center bg-brand-surface/40 backdrop-blur-sm p-8 rounded-2xl max-w-2xl mx-auto border border-brand-primary/20 shadow-xl" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <div className="mx-auto mb-4 w-16 h-16 text-brand-primary/70"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg></div>
             <h3 className="font-serif text-3xl font-bold text-white mb-2">A Glitch in the Gallery</h3>
             <p className="text-brand-text/70 mb-6 max-w-md mx-auto">{error}</p>
-            <button 
-                onClick={onRetry} 
-                className="px-8 py-3 bg-gradient-to-r from-brand-primary to-brand-secondary text-white font-bold rounded-full shadow-lg transform hover:scale-105 transition-transform focus:outline-none focus:ring-4 focus:ring-brand-primary/50"
-            >
-                Try Again
-            </button>
+            <button onClick={onRetry} className="px-8 py-3 bg-gradient-to-r from-brand-primary to-brand-secondary text-white font-bold rounded-full shadow-lg transform hover:scale-105 transition-transform focus:outline-none focus:ring-4 focus:ring-brand-primary/50">Try Again</button>
         </motion.div>
       )}
 
@@ -226,55 +236,40 @@ const Gallery: React.FC<GalleryProps> = ({ photos, onNewPhoto, isLoading, error,
         </div>
       )}
       
-      <div className="columns-2 md:columns-3 gap-4 space-y-4 mt-8">
-        {photos.map((photo) => (
+      <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 space-y-4 mt-8">
+        {photos.map((photo, index) => (
           <motion.div
             key={photo.id}
-            layout
+            layoutId={photo.id}
+            initial={{ opacity: 0, y: 50, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 100, damping: 20, delay: index * 0.05 }}
             className="break-inside-avoid"
           >
-            <motion.div 
-                className="bg-brand-surface/40 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden cursor-pointer border border-white/10"
-                whileHover={{ scale: 1.03, y: -5, boxShadow: '0 10px 20px rgba(233, 69, 96, 0.15)' }}
-                onClick={() => setSelectedImg(photo)}
+            <div 
+                className="bg-white p-2 pb-16 shadow-lg rounded-md cursor-pointer relative"
+                onClick={() => setSelectedIdx(index)}
             >
-                <img src={photo.url} alt={photo.description || `A memory from ${photo.author}`} className="w-full h-auto" />
-                <div className="p-3 text-left">
-                    {photo.description && <p className="text-sm text-brand-text/90 mb-2 italic">"{photo.description}"</p>}
-                    <p className="font-semibold text-sm text-brand-secondary text-right">- {photo.author}</p>
-                </div>
-            </motion.div>
+              <motion.div 
+                 className="relative overflow-hidden"
+                 whileHover={{ scale: 1.03 }}
+                 transition={{ type: 'spring', stiffness: 300, damping: 10 }}
+              >
+                  <img src={photo.url} alt={photo.description || `A memory from ${photo.author}`} className="w-full h-auto object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none"></div>
+              </motion.div>
+              <div className="absolute bottom-3 left-3 right-3 text-left">
+                  {photo.description && <p className="font-script text-lg text-gray-700 leading-tight mb-2">"{photo.description}"</p>}
+                  <p className="font-script text-md text-gray-500 text-right">- {photo.author}</p>
+              </div>
+            </div>
           </motion.div>
         ))}
       </div>
 
       <AnimatePresence>
-        {selectedImg && (
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSelectedImg(null)}
-          >
-            <motion.img
-              layoutId={selectedImg.id}
-              src={selectedImg.url}
-              alt={selectedImg.description || `A memory from ${selectedImg.author}`}
-              className="max-w-[90vw] max-h-[80vh] object-contain rounded-lg shadow-2xl"
-            />
-             <motion.div 
-                className="absolute bottom-10 left-10 right-10 text-center bg-black/60 p-4 rounded-xl backdrop-blur-sm border border-white/20"
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-             >
-                {selectedImg.description && <p className="text-lg text-white font-serif mb-1">"{selectedImg.description}"</p>}
-                <p className="text-md text-white/80">Uploaded by {selectedImg.author}</p>
-             </motion.div>
-          </motion.div>
+        {selectedIdx !== null && (
+          <Carousel photos={photos} selectedIndex={selectedIdx} onClose={() => setSelectedIdx(null)} />
         )}
         {isUploadModalOpen && (
             <UploadModal onClose={() => setUploadModalOpen(false)} onUpload={onNewPhoto} />

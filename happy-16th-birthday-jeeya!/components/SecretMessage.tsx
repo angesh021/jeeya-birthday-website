@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFocusTrap } from './shared/useFocusTrap.ts';
 
@@ -8,14 +8,15 @@ interface SecretMessageProps {
   onClose: () => void;
 }
 
+// UPDATE: Changed to the new iPhone 16e gift concept.
 const staticGift = {
-    name: "The Starlight Projector",
-    description: "Turns any room into a breathtaking galaxy, perfect for creating a magical and relaxing atmosphere.",
-    imageUrl: "https://images.unsplash.com/photo-1519638831568-d9897f54ed69?q=80&w=1200&auto=format&fit=crop",
+    name: "iPhone 16e",
+    description: "A revolutionary leap into the future. Crafted from a single piece of smart glass, it's more than a phone—it's a seamless extension of you.",
+    imageUrl: "https://images.unsplash.com/photo-1616348436168-de43ad0db179?q=80&w=1200&auto=format&fit=crop",
     features: [
-        { name: "Cosmic Ambiance", description: "Projects a realistic starry night sky onto your walls and ceiling." },
-        { name: "Multiple Modes", description: "Choose from different color combinations and dazzling effects." },
-        { name: "Soothing Sounds", description: "Connect via Bluetooth to play your favorite relaxing music." },
+        { name: "Holographic FaceTime", description: "Experience calls in stunning 3D, bringing your loved ones right into the room." },
+        { name: "Aura-Sync Glass", description: "The chassis subtly shifts color to match your mood, notifications, or music." },
+        { name: "Neural-Link Editing", description: "Intuitively edit photos and videos with just a thought. It's magic." },
     ]
 };
 
@@ -37,7 +38,7 @@ const GiftBox: React.FC<{ onUnwrap: () => void }> = ({ onUnwrap }) => (
             role="button"
             aria-label="Unwrap the gift"
         >
-            <motion.div 
+            <motion.div
                 className="absolute top-0 w-52 h-16 bg-gradient-to-r from-red-500 to-pink-500 rounded-t-lg shadow-lg z-10"
                 style={{ left: '-16px' }}
                 aria-hidden="true"
@@ -45,11 +46,11 @@ const GiftBox: React.FC<{ onUnwrap: () => void }> = ({ onUnwrap }) => (
                 <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 w-8 h-20 bg-pink-300 rounded-full transform -skew-x-12" />
                 <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 w-8 h-20 bg-red-300 rounded-full transform skew-x-12" />
             </motion.div>
-            <div 
+            <div
                 className="absolute bottom-0 w-full h-3/4 bg-gradient-to-r from-pink-500 to-red-500 rounded-b-lg shadow-lg"
                 aria-hidden="true"
             />
-            <div 
+            <div
                 className="absolute left-1/2 -translate-x-1/2 bottom-0 w-8 h-full bg-red-400"
                 aria-hidden="true"
             />
@@ -98,7 +99,7 @@ const SecretMessage: React.FC<SecretMessageProps> = ({ isOpen, onClose }) => {
                         ref={modalRef}
                         role="dialog"
                         aria-modal="true"
-                        className="relative bg-gradient-to-br from-[#1d1747] to-brand-surface w-full max-w-2xl p-8 rounded-2xl shadow-2xl border border-white/10"
+                        className="relative bg-gradient-to-br from-[#1d1747] to-brand-surface w-full max-w-4xl p-8 md:p-12 rounded-2xl shadow-2xl border border-white/10"
                         initial={{ scale: 0.9, y: 20 }}
                         animate={{ scale: 1, y: 0 }}
                         exit={{ scale: 0.9, y: 20 }}
@@ -106,7 +107,7 @@ const SecretMessage: React.FC<SecretMessageProps> = ({ isOpen, onClose }) => {
                     >
                         <button onClick={onClose} className="absolute top-4 right-4 text-4xl text-white/50 hover:text-white transition-colors z-20" aria-label="Close message">&times;</button>
                         
-                        <div className="min-h-[400px] flex items-center justify-center">
+                        <div className="min-h-[450px] flex items-center justify-center">
                             <AnimatePresence mode="wait">
                                 {!isRevealed ? (
                                     <GiftBox onUnwrap={() => setIsRevealed(true)} />
@@ -116,23 +117,26 @@ const SecretMessage: React.FC<SecretMessageProps> = ({ isOpen, onClose }) => {
                                         className="grid md:grid-cols-2 gap-8 items-center w-full"
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.1 }}
+                                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], staggerChildren: 0.1 }}
                                     >
-                                        <div className="flex flex-col items-center justify-center">
-                                            <img src={staticGift.imageUrl} alt={`Image of ${staticGift.name}`} className="w-full h-auto object-cover rounded-lg shadow-2xl" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-3xl font-bold text-brand-accent mb-2">{staticGift.name}</h3>
-                                            <p className="text-brand-text/80 mb-4 italic">{staticGift.description}</p>
-                                            <ul className="space-y-2">
+                                        <motion.div className="flex items-center justify-center">
+                                            <div className="relative animate-pulsate-slow" style={{filter: 'drop-shadow(0 0 1.5rem rgba(233, 69, 96, 0.5))'}}>
+                                                 <img src={staticGift.imageUrl} alt={`Image of ${staticGift.name}`} className="w-full max-w-xs h-auto object-contain rounded-2xl" />
+                                            </div>
+                                        </motion.div>
+                                        
+                                        <motion.div>
+                                            <h3 className="text-4xl font-bold font-serif text-brand-accent mb-3">{staticGift.name}</h3>
+                                            <p className="text-brand-text/80 mb-6">{staticGift.description}</p>
+                                            <ul className="space-y-4">
                                                 {staticGift.features.map(feature => (
-                                                    <li key={feature.name}>
-                                                        <strong className="text-white">{feature.name}:</strong>
-                                                        <span className="text-brand-text/70 ml-2">{feature.description}</span>
+                                                    <li key={feature.name} className="border-l-2 border-brand-primary/50 pl-4">
+                                                        <strong className="text-white block">{feature.name}</strong>
+                                                        <span className="text-brand-text/70">{feature.description}</span>
                                                     </li>
                                                 ))}
                                             </ul>
-                                        </div>
+                                        </motion.div>
                                     </motion.div>
                                 )}
                             </AnimatePresence>

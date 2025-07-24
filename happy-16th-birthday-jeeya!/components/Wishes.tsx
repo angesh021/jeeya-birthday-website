@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import type { Wish } from '../constants.tsx';
 import { demoWishes } from '../constants.tsx';
 import * as wishService from '../services/wishService.ts';
@@ -42,61 +42,104 @@ const WishCard: React.FC<{ wish: Wish; onLike: (id: string) => void }> = ({ wish
     const [isLiked, setIsLiked] = useState(false);
     const [particles, setParticles] = useState<{id: number}[]>([]);
 
+    const cardRef = useRef<HTMLDivElement>(null);
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
+
+    const xSpring = useSpring(x, { stiffness: 300, damping: 40 });
+    const ySpring = useSpring(y, { stiffness: 300, damping: 40 });
+
+    const rotateX = useTransform(ySpring, [-0.5, 0.5], ['10deg', '-10deg']);
+    const rotateY = useTransform(xSpring, [-0.5, 0.5], ['-10deg', '10deg']);
+    
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!cardRef.current) return;
+        const rect = cardRef.current.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        const xPct = mouseX / width - 0.5;
+        const yPct = mouseY / height - 0.5;
+
+        x.set(xPct);
+        y.set(yPct);
+    };
+
+    const handleMouseLeave = () => {
+        x.set(0);
+        y.set(0);
+    };
+
     const handleLike = () => {
         if (isLiked) return;
         setIsLiked(true);
         onLike(wish.id);
         
-        // Trigger particle animation
         const newParticles = Array.from({ length: 10 }).map(() => ({ id: Math.random() }));
         setParticles(newParticles);
-        setTimeout(() => setParticles([]), 1000); // Cleanup particles after animation
+        setTimeout(() => setParticles([]), 1000);
     };
 
     return (
         <motion.div
+            ref={cardRef}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            style={{
+                rotateX,
+                rotateY,
+                transformStyle: 'preserve-3d',
+            }}
             layout
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
             transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-            className="bg-brand-surface/40 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10"
+            className="p-1 rounded-2xl bg-gradient-to-br from-brand-primary/50 to-brand-secondary/50 relative"
         >
-            <div className="flex items-start gap-4">
-                <Avatar name={wish.name} />
-                <div className="flex-grow">
-                    <p className="font-bold text-brand-text text-lg">{wish.name}</p>
-                    <p className="text-sm text-brand-text/60">{new Date(wish.createdAt || 0).toLocaleString()}</p>
+            <div 
+                className="bg-brand-surface/80 backdrop-blur-lg p-6 rounded-[14px] w-full h-full"
+                style={{ transform: 'translateZ(40px)' }}
+            >
+                <div className="flex items-start gap-4">
+                    <Avatar name={wish.name} />
+                    <div className="flex-grow">
+                        <p className="font-bold text-brand-text text-lg">{wish.name}</p>
+                        <p className="text-sm text-brand-text/60">{new Date(wish.createdAt || 0).toLocaleString()}</p>
+                    </div>
                 </div>
-            </div>
-            <p className="font-serif text-lg text-brand-text/90 my-4">"{wish.message}"</p>
-            <div className="flex justify-end items-center gap-2 relative">
-                <AnimatePresence>
-                {particles.map(p => (
-                    <motion.div
-                        key={p.id}
-                        className="absolute bottom-0 right-2 text-brand-primary"
-                        initial={{ y: 0, opacity: 1, scale: 0.5 }}
-                        animate={{ 
-                            y: -60, 
-                            x: (Math.random() - 0.5) * 40,
-                            scale: Math.random() * 0.5 + 1,
-                            opacity: 0,
-                        }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.8, ease: "easeOut" }}
-                    >
-                         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                    </motion.div>
-                ))}
-                </AnimatePresence>
+                <p className="font-serif text-lg text-brand-text/90 my-4">"{wish.message}"</p>
+                <div className="flex justify-end items-center gap-2 relative">
+                    <AnimatePresence>
+                    {particles.map(p => (
+                        <motion.div
+                            key={p.id}
+                            className="absolute bottom-0 right-2 text-brand-primary"
+                            initial={{ y: 0, opacity: 1, scale: 0.5 }}
+                            animate={{ 
+                                y: -60, 
+                                x: (Math.random() - 0.5) * 40,
+                                scale: Math.random() * 0.5 + 1,
+                                opacity: 0,
+                            }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
+                            style={{ transform: 'translateZ(50px)' }}
+                        >
+                             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                        </motion.div>
+                    ))}
+                    </AnimatePresence>
 
-                <button onClick={handleLike} className="flex items-center gap-2 group" aria-label={`Like wish from ${wish.name}`}>
-                    <LikeHeartIcon isLiked={isLiked} />
-                    <span className={`font-semibold text-sm transition-colors ${isLiked ? 'text-brand-primary' : 'text-brand-text/70 group-hover:text-brand-text'}`}>
-                        {wish.likes || 0}
-                    </span>
-                </button>
+                    <button onClick={handleLike} className="flex items-center gap-2 group" aria-label={`Like wish from ${wish.name}`}>
+                        <LikeHeartIcon isLiked={isLiked} />
+                        <span className={`font-semibold text-sm transition-colors ${isLiked ? 'text-brand-primary' : 'text-brand-text/70 group-hover:text-brand-text'}`}>
+                            {wish.likes || 0}
+                        </span>
+                    </button>
+                </div>
             </div>
         </motion.div>
     );
@@ -217,15 +260,15 @@ const Wishes: React.FC = () => {
         Wishes From The Heart
       </motion.h2>
 
-      <div className="grid lg:grid-cols-12 gap-12 items-start max-w-6xl mx-auto">
-        <motion.div 
-            className="lg:col-span-4"
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
+      <div className="flex flex-col items-center gap-12 w-full max-w-4xl mx-auto">
+        <motion.div
+            className="w-full max-w-2xl"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <div className="bg-gradient-to-br from-brand-surface/80 to-brand-surface/50 backdrop-blur-lg p-8 rounded-2xl shadow-xl sticky top-24 border border-white/10">
+          <div className="bg-gradient-to-br from-brand-surface/80 to-brand-surface/50 backdrop-blur-lg p-8 rounded-2xl shadow-xl border border-white/10">
             <h3 className="text-3xl font-bold mb-4 font-serif text-brand-accent">Leave a Message</h3>
             
             <fieldset disabled={isSubmitting || isLoading || isDemoMode} className="group">
@@ -273,7 +316,7 @@ const Wishes: React.FC = () => {
           </div>
         </motion.div>
 
-        <div className="lg:col-span-8">
+        <div className="w-full max-w-2xl" style={{ perspective: '1200px' }}>
             {isLoading && <p className="text-center text-brand-text/70">Loading wishes from across the universe...</p>}
             {error && !isDemoMode && !isLoading && <p className="text-center text-red-400 bg-red-900/20 p-3 rounded-md">{error}</p>}
             {!isLoading && !error && wishes.length === 0 && <p className="text-center text-brand-text/70">Be the first to leave a wish!</p>}
