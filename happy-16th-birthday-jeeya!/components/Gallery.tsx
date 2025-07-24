@@ -126,14 +126,13 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
     );
 };
 
-
 const Carousel: React.FC<{ photos: Photo[], selectedIndex: number, onClose: () => void }> = ({ photos, selectedIndex, onClose }) => {
     const [[page, direction], setPage] = useState([selectedIndex, 0]);
     
-    const paginate = (newDirection: number) => {
+    const paginate = useCallback((newDirection: number) => {
         const newIndex = (page + newDirection + photos.length) % photos.length;
         setPage([newIndex, newDirection]);
-    };
+    }, [page, photos.length]);
     
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -143,53 +142,76 @@ const Carousel: React.FC<{ photos: Photo[], selectedIndex: number, onClose: () =
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [page]);
+    }, [paginate, onClose]);
     
     const carouselVariants = {
-        enter: (direction: number) => ({ x: direction > 0 ? '100%' : '-100%', opacity: 0 }),
-        center: { x: 0, opacity: 1 },
-        exit: (direction: number) => ({ x: direction < 0 ? '100%' : '-100%', opacity: 0 }),
+        enter: { opacity: 0 },
+        center: { opacity: 1 },
+        exit: { opacity: 0 },
     };
     
     const photo = photos[page];
 
     return (
         <motion.div
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center"
+            className="fixed inset-0 bg-brand-background/50 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-4"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose} role="dialog" aria-modal="true"
         >
-             <button onClick={() => paginate(-1)} className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/10 rounded-full text-white hover:bg-white/20">&lt;</button>
-             <button onClick={() => paginate(1)} className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/10 rounded-full text-white hover:bg-white/20">&gt;</button>
+             <button onClick={(e) => { e.stopPropagation(); paginate(-1); }} className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10 p-3 bg-white/10 rounded-full text-white hover:bg-white/20 text-3xl transition-colors">&lt;</button>
+             <button onClick={(e) => { e.stopPropagation(); paginate(1); }} className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-10 p-3 bg-white/10 rounded-full text-white hover:bg-white/20 text-3xl transition-colors">&gt;</button>
+             <button onClick={onClose} className="absolute top-4 right-4 text-5xl text-white/50 hover:text-white transition-colors z-20">&times;</button>
              
-             <AnimatePresence initial={false} custom={direction}>
+             <div 
+                className="w-full h-full flex flex-col items-center justify-center gap-6"
+                onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+             >
+                <AnimatePresence initial={false} custom={direction}>
+                    <motion.div
+                        key={page}
+                        custom={direction}
+                        variants={carouselVariants}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="w-full flex-grow flex items-center justify-center relative pt-16 pb-8"
+                    >
+                        <motion.img
+                            // Use layoutId only for the initially selected image to prevent animation jumpiness when navigating
+                            layoutId={page === selectedIndex ? photo.id : undefined}
+                            src={photo.url}
+                            alt={photo.description || `A memory from ${photo.author}`}
+                            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                        />
+                    </motion.div>
+                </AnimatePresence>
+                 
                 <motion.div
-                    key={page}
-                    custom={direction}
-                    variants={carouselVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{ x: { type: 'spring', stiffness: 300, damping: 30 }, opacity: { duration: 0.2 } }}
-                    className="w-full h-full flex flex-col items-center justify-center p-16"
-                    onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside carousel
+                    key={`${page}-details`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.4 }}
+                    className="flex-shrink-0 w-full max-w-4xl text-center pb-8"
                 >
-                     <motion.img
-                        layoutId={page === selectedIndex ? photo.id : undefined} // Only animate layout on first open
-                        src={photo.url}
-                        alt={photo.description || `A memory from ${photo.author}`}
-                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-                     />
-                     <motion.div className="absolute bottom-10 left-10 right-10 text-center bg-black/60 p-4 rounded-xl backdrop-blur-sm border border-white/20">
-                        {photo.description && <p className="text-lg text-white font-serif mb-1">"{photo.description}"</p>}
-                        <p className="text-md text-white/80">Uploaded by {photo.author}</p>
-                     </motion.div>
-                </motion.div>
-            </AnimatePresence>
+                    <p className="font-serif text-3xl text-white mb-2 drop-shadow-md">"{photo.description}"</p>
+                    <p className="text-brand-accent/80 text-lg">Shared by {photo.author}</p>
+               </motion.div>
+             </div>
         </motion.div>
     );
 };
 
+// Helper to assign different grid sizes for a collage effect
+const getCollageItemClasses = (index: number): string => {
+    const pattern = index % 11;
+    switch (pattern) {
+        case 0: return 'md:col-span-2 md:row-span-2';
+        case 5: return 'md:row-span-2';
+        case 9: return 'md:row-span-2';
+        default: return 'col-span-1 row-span-1';
+    }
+};
 
 const Gallery: React.FC<GalleryProps> = ({ photos, onNewPhoto, isLoading, error, onRetry }) => {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
@@ -236,31 +258,23 @@ const Gallery: React.FC<GalleryProps> = ({ photos, onNewPhoto, isLoading, error,
         </div>
       )}
       
-      <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 space-y-4 mt-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 auto-rows-[250px] grid-flow-dense gap-4 mt-8">
         {photos.map((photo, index) => (
           <motion.div
             key={photo.id}
-            layoutId={photo.id}
             initial={{ opacity: 0, y: 50, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: 'spring', stiffness: 100, damping: 20, delay: index * 0.05 }}
-            className="break-inside-avoid"
+            className={`relative rounded-lg overflow-hidden group cursor-pointer shadow-lg ${getCollageItemClasses(index)}`}
+            onClick={() => setSelectedIdx(index)}
           >
-            <div 
-                className="bg-white p-2 pb-16 shadow-lg rounded-md cursor-pointer relative"
-                onClick={() => setSelectedIdx(index)}
-            >
-              <motion.div 
-                 className="relative overflow-hidden"
-                 whileHover={{ scale: 1.03 }}
-                 transition={{ type: 'spring', stiffness: 300, damping: 10 }}
-              >
-                  <img src={photo.url} alt={photo.description || `A memory from ${photo.author}`} className="w-full h-auto object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none"></div>
-              </motion.div>
-              <div className="absolute bottom-3 left-3 right-3 text-left">
-                  {photo.description && <p className="font-script text-lg text-gray-700 leading-tight mb-2">"{photo.description}"</p>}
-                  <p className="font-script text-md text-gray-500 text-right">- {photo.author}</p>
+            <motion.div layoutId={photo.id} className="w-full h-full">
+              <img src={photo.url} alt={photo.description || `A memory from ${photo.author}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+            </motion.div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+              <div className="text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 w-full">
+                  {photo.description && <p className="font-serif text-lg leading-tight mb-1 truncate">"{photo.description}"</p>}
+                  <p className="text-sm opacity-80">- {photo.author}</p>
               </div>
             </div>
           </motion.div>

@@ -63,7 +63,6 @@ export const stickers: Sticker[] = [
   { id: 'sticker-3', src: 'https://em-content.zobj.net/source/microsoft-teams/363/star-struck_1f929.png', alt: 'Star Struck' },
   { id: 'sticker-4', src: 'https://em-content.zobj.net/source/microsoft-teams/363/red-heart_2764-fe0f.png', alt: 'Heart' },
   { id: 'sticker-5', src: 'https://em-content.zobj.net/source/microsoft-teams/363/crown_1f451.png', alt: 'Crown' },
-  { id: 'sticker-6', src: 'https://em-content.zobj.net/source/microsoft-teams/363/sunglasses_1f576-fe0f.png', alt: 'Sunglasses' },
 ];
 
 export const navLinks: { id: SectionId; title: string, icon: React.ReactNode }[] = [
