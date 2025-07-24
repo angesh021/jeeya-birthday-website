@@ -1,5 +1,5 @@
 {
-  "name": "jeeya's-sweet-16-celebration",
+  "name": "happy-16th-birthday-jeeya!",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -17,7 +17,8 @@
     "@tsparticles/engine": "^3.8.1",
     "@vercel/blob": "^1.1.1",
     "@vercel/kv": "^2.0.0",
-    "buffer": "^6.0.3"
+    "buffer": "^6.0.3",
+    "redis": "^4.6.15"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

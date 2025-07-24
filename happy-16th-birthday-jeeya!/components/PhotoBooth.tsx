@@ -13,6 +13,60 @@ type PlacedSticker = StickerType & {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+const CameraFocusAnimation: React.FC = () => (
+    <div className="h-[480px] flex flex-col items-center justify-center gap-4">
+        <div className="relative w-40 h-40">
+            <div className="absolute inset-0 rounded-full border-brand-primary/50 animate-focus-ring" style={{ animationDelay: '0s' }}></div>
+            <div className="absolute inset-0 rounded-full border-brand-accent/50 animate-focus-ring" style={{ animationDelay: '0.5s' }}></div>
+            <div className="absolute inset-8 rounded-full bg-brand-primary/20"></div>
+        </div>
+        <p className="text-brand-text/80">Warming up the camera...</p>
+    </div>
+);
+
+const PhotoStripDevelopingAnimation: React.FC = () => {
+    const Polaroid = ({ delay }: { delay: number }) => (
+        <motion.div
+            className="w-24 h-28 bg-white shadow-lg p-2"
+            initial={{ y: 100, opacity: 0, rotate: Math.random() * 30 - 15 }}
+            animate={{
+                y: 0,
+                opacity: 1,
+                x: [0, -3, 3, -3, 3, 0], // Shake animation
+            }}
+            transition={{
+                y: { type: 'spring', stiffness: 100, delay },
+                opacity: { duration: 0.5, delay },
+                x: {
+                    delay: delay + 0.8,
+                    duration: 0.7,
+                    repeat: 2,
+                    ease: 'easeInOut',
+                },
+            }}
+        >
+            <div className="w-full h-full bg-gray-800 flex items-center justify-center overflow-hidden">
+                <svg className="w-8 h-8 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+        </motion.div>
+    );
+
+    return (
+        <div className="flex flex-col items-center gap-4 my-12">
+            <div className="flex -space-x-8">
+                <Polaroid delay={0} />
+                <Polaroid delay={0.2} />
+                <Polaroid delay={0.4} />
+            </div>
+            <p className="text-brand-text/70 mt-4">Assembling your masterpiece...</p>
+        </div>
+    );
+};
+
+
 const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto }) => {
     const [status, setStatus] = useState<CameraStatus>('idle');
     const [stream, setStream] = useState<MediaStream | null>(null);
@@ -125,7 +179,7 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
             { pre: "Last one, make it count!", capture: "Photo 3 of 3", post: "Perfect! 🎉" },
         ];
     
-        await sleep(300); // Allow instruction overlay to fade out
+        await sleep(300);
     
         for (const msg of messages) {
             setOverlayMessage(msg.pre);
@@ -135,10 +189,10 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
             await sleep(1500);
     
             setFlash(true);
-            setOverlayMessage(''); // Hide message during flash
+            setOverlayMessage('');
             const photoData = await capturePhoto();
             if (photoData) photos.push(photoData);
-            await sleep(500); // Flash duration
+            await sleep(500); 
             setFlash(false);
     
             setOverlayMessage(msg.post);
@@ -166,7 +220,6 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
         
-        // --- Enhanced Birthday Theme Background ---
         const cx = canvasWidth / 2;
         const cy = canvasHeight / 2;
 
@@ -196,7 +249,6 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
         }
         ctx.globalAlpha = 1;
         
-        // --- Random Title ---
         const titles = ["Happy Sweet 16!", "Party Time!", "Making Memories", "Sixteen & Sparkling", "Jeeya's Big Day!"];
         const randomTitle = titles[Math.floor(Math.random() * titles.length)];
 
@@ -305,11 +357,21 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
     const handleAddToGallery = async () => {
         if (!finalPhotoStrip) return;
         try {
-            const newPhotoData = await addPhoto({ url: finalPhotoStrip, author: 'Photo Booth Fun', description: 'Created in the Virtual Photo Booth!' });
+            const response = await fetch(finalPhotoStrip);
+            const blob = await response.blob();
+            const file = new File([blob], `photobooth-memory-${Date.now()}.jpeg`, { type: 'image/jpeg' });
+            
+            const newPhotoData = await addPhoto({ 
+                file: file, 
+                author: 'Photo Booth Fun', 
+                description: 'Created in the Virtual Photo Booth!' 
+            });
+
             onNewPhoto(newPhotoData);
             alert('Photo added to gallery!');
             handleRetake();
         } catch (error) {
+            console.error("Error adding photobooth picture to gallery:", error);
             alert('Could not add photo to gallery. Please try again.');
         }
     };
@@ -329,7 +391,7 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
                     </div>
                 )}
                 
-                {status === 'initializing' && <div className="h-[480px] flex items-center justify-center"><p>Warming up the camera...</p></div>}
+                {status === 'initializing' && <CameraFocusAnimation />}
                 {status === 'denied' && <div className="h-[480px] flex items-center justify-center"><p className="text-red-400">Camera access denied. Please enable it in your browser settings.</p></div>}
                 {status === 'error' && <div className="h-[480px] flex items-center justify-center"><p className="text-red-400">Camera not found. Please ensure one is connected.</p></div>}
                 
@@ -348,16 +410,16 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
                                 <AnimatePresence>
                                     {status === 'ready' && (
                                          <motion.div
-                                            className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-center p-4"
+                                            className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/10 flex flex-col items-center justify-center text-center p-4"
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             exit={{ opacity: 0 }}
                                         >
-                                            <h3 className="font-bold text-2xl text-brand-accent mb-4 font-serif">Get Ready!</h3>
-                                            <div className="text-white space-y-2">
-                                                <p><strong className="text-brand-secondary">1.</strong> Drag fun stickers onto the screen.</p>
-                                                <p><strong className="text-brand-secondary">2.</strong> Click 'Take Photos' to start.</p>
-                                                <p><strong className="text-brand-secondary">3.</strong> Smile for 3 pictures!</p>
+                                            <h3 className="font-bold text-3xl text-brand-accent mb-6 font-serif tracking-wide drop-shadow-lg">Get Ready!</h3>
+                                            <div className="text-white space-y-3 text-lg">
+                                                <p><strong className="text-brand-secondary font-bold mr-2">1.</strong> Drag fun stickers onto the screen.</p>
+                                                <p><strong className="text-brand-secondary font-bold mr-2">2.</strong> Click 'Take Photos' when you're set.</p>
+                                                <p><strong className="text-brand-secondary font-bold mr-2">3.</strong> Smile for 3 pictures! ✨</p>
                                             </div>
                                         </motion.div>
                                     )}
@@ -397,10 +459,7 @@ const PhotoBooth: React.FC<{ onNewPhoto: (photo: any) => void }> = ({ onNewPhoto
                 {status === 'captured' && (
                     <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center p-4">
                         {!finalPhotoStrip ? (
-                             <div className="flex flex-col items-center gap-2 my-12">
-                                <div className="w-8 h-8 border-4 border-dashed rounded-full animate-spin border-brand-primary"></div>
-                                <p className="text-brand-text/70">Assembling your photo strip...</p>
-                            </div>
+                             <PhotoStripDevelopingAnimation />
                         ) : (
                             <div className="flex flex-col md:flex-row gap-8 items-center justify-center">
                                 <img src={finalPhotoStrip} alt="Your photo strip" className="rounded-lg shadow-lg max-w-md w-full object-contain"/>

@@ -61,14 +61,7 @@ const UploadModal: React.FC<{ onClose: () => void, onUpload: (photo: Photo) => v
         setError('');
 
         try {
-            const base64Url = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result as string);
-                reader.onerror = (error) => reject(error);
-            });
-            
-            const newPhoto = await addPhoto({ url: base64Url, author, description });
+            const newPhoto = await addPhoto({ file, author, description });
             onUpload(newPhoto);
             onClose();
 

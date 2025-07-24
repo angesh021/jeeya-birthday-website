@@ -28,14 +28,18 @@ export const getPhotos = async (): Promise<Photo[]> => {
     return response.json();
 };
 
-export const addPhoto = async (photoData: { url: string; author: string; description: string }): Promise<Photo> => {
-    const response = await fetch(`${API_BASE}/api/photos`, {
+export const addPhoto = async (photoData: { file: File; author: string; description: string }): Promise<Photo> => {
+    const { file, author, description } = photoData;
+    const url = `${API_BASE}/api/photos?filename=${encodeURIComponent(file.name)}&author=${encodeURIComponent(author)}&description=${encodeURIComponent(description)}`;
+
+    const response = await fetch(url, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': file.type,
         },
-        body: JSON.stringify(photoData),
+        body: file,
     });
+    
     if (!response.ok) {
         console.error('Failed to add photo:', response.statusText);
         let errorMsg = 'Could not upload your memory. Please try again.';

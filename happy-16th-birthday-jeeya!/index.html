@@ -28,6 +28,7 @@
                         'flash': 'flash 0.5s ease-out',
                         'gradient': 'gradient 15s ease infinite',
                         'twinkle': 'twinkle 1.5s ease-in-out infinite',
+                        'focus-ring': 'focus-ring 2s ease-in-out infinite',
                     },
                     keyframes: {
                         pulsate: {
@@ -46,6 +47,10 @@
                         twinkle: {
                             '0%, 100%': { opacity: 0.5, transform: 'scale(0.8)' },
                             '50%': { opacity: 1, transform: 'scale(1)' },
+                        },
+                        'focus-ring': {
+                            '0%, 100%': { transform: 'scale(0.8)', opacity: '0.5', 'border-width': '8px' },
+                            '50%': { transform: 'scale(1.2)', opacity: '1', 'border-width': '2px' },
                         },
                     },
                 }
@@ -110,7 +115,8 @@
     "@tsparticles/engine": "https://esm.sh/@tsparticles/engine@^3.8.1",
     "@vercel/blob": "https://esm.sh/@vercel/blob@^1.1.1",
     "@vercel/kv": "https://esm.sh/@vercel/kv@^2.0.0",
-    "buffer": "https://esm.sh/buffer@^6.0.3"
+    "buffer": "https://esm.sh/buffer@^6.0.3",
+    "redis": "https://esm.sh/redis@^4.6.15"
   }
 }
 </script>

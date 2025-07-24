@@ -2,7 +2,6 @@
 import { put } from '@vercel/blob';
 import { kv } from '@vercel/kv';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { Buffer } from 'buffer';
 
 const PHOTOS_ZSET_KEY = 'photos_by_date';
 
@@ -37,22 +36,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'POST') {
-        const { url: dataUrl, author, description } = req.body;
-        if (!dataUrl || !author) {
-            return res.status(400).json({ error: 'Photo data URL and author are required.' });
+        const { author, description, filename } = req.query;
+        const contentType = req.headers['content-type'];
+
+        if (!author || !filename || !req.body || !contentType) {
+            return res.status(400).json({ error: 'Author, filename, content-type header, and file body are required.' });
+        }
+        
+        if (typeof author !== 'string' || typeof filename !== 'string') {
+            return res.status(400).json({ error: 'Author and filename must be strings.' });
         }
 
         try {
             // 1. Upload image to Vercel Blob
-            const fileType = dataUrl.substring(dataUrl.indexOf(':') + 1, dataUrl.indexOf(';'));
-            const extension = fileType.split('/')[1] || 'jpeg';
-            const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
-            const buffer = Buffer.from(base64Data, 'base64');
-            const pathname = `photogallery/${Date.now()}.${extension}`;
+            const uniqueFilename = `${Date.now()}-${filename}`;
+            const pathname = `photogallery/${uniqueFilename}`;
 
-            const blob = await put(pathname, buffer, {
+            const blob = await put(pathname, req.body, {
                 access: 'public',
-                contentType: fileType,
+                contentType: contentType,
             });
 
             // 2. Store metadata in Vercel KV
@@ -60,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 id: blob.url,
                 url: blob.url,
                 author,
-                description: description || '', // Ensure description is a string
+                description: (description as string) || '',
                 uploadedAt: new Date().toISOString(),
             };
 
@@ -74,6 +76,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } catch (error) {
             console.error('Error uploading photo or saving metadata:', error);
             const errorMessage = error instanceof Error ? `Operation failed: ${error.message}` : 'An unknown error occurred.';
+            if (errorMessage.toLowerCase().includes('not configured') || errorMessage.toLowerCase().includes('token')) {
+                 return res.status(500).json({ error: `Storage operation failed. This usually means Vercel Blob is not correctly linked to your project or the BLOB_READ_WRITE_TOKEN is missing. Please check your project's integration settings on the Vercel dashboard.` });
+            }
             return res.status(500).json({ error: errorMessage });
         }
     }

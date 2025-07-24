@@ -1,36 +1,63 @@
 
-import { kv } from '@vercel/kv';
+import { createClient, type RedisClientType } from 'redis';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const WISHES_KEY = 'wishes';
 
+// It's a good practice to have a single client instance for a serverless function instance.
+let redis: RedisClientType | undefined;
+
+async function getRedisClient() {
+    if (!process.env.KV_URL) {
+        throw new Error('KV_URL environment variable is not set. Please link Vercel KV to your project.');
+    }
+    if (!redis) {
+       redis = createClient({
+            url: process.env.KV_URL,
+        });
+       // Optional: Log errors for debugging
+       redis.on('error', (err) => console.error('Redis Client Error', err));
+    }
+    if (!redis.isOpen) {
+        // This will connect the client if it's not already connected.
+        await redis.connect();
+    }
+    return redis;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
-        return res.status(500).json({ error: 'KV storage is not configured. Please link Vercel KV to your project in the Vercel dashboard.' });
+    if (!process.env.KV_URL) {
+        return res.status(500).json({ error: 'KV storage is not configured. Please set the KV_URL environment variable in your Vercel project.' });
     }
 
-    if (req.method === 'GET') {
-        try {
-            const wishIds = await kv.zrange<string[]>(WISHES_KEY, 0, -1, { rev: true });
+    try {
+        const redisClient = await getRedisClient();
+
+        if (req.method === 'GET') {
+            // Fetch wish IDs from a sorted set, newest first
+            const wishIds = await redisClient.zRange(WISHES_KEY, 0, -1, { REV: true });
+            
             if (wishIds.length === 0) {
                 return res.status(200).json([]);
             }
             
-            const pipeline = kv.pipeline();
-            wishIds.forEach(id => pipeline.hgetall(`wish:${id}`));
-            const wishesData = await pipeline.exec();
+            // Use a pipeline to fetch all wish data efficiently
+            const multi = redisClient.multi();
+            wishIds.forEach(id => multi.hGetAll(`wish:${id}`));
+            const wishesData = await multi.exec() as Record<string, string>[];
 
-            const validWishes = wishesData.filter(wish => wish !== null);
+            // hGetAll returns string values, so parse createdAt back to a number.
+            const validWishes = wishesData
+                .filter(wish => wish && Object.keys(wish).length > 0)
+                .map(wish => ({
+                    ...wish,
+                    createdAt: wish.createdAt ? parseInt(wish.createdAt, 10) : 0,
+                }));
 
             return res.status(200).json(validWishes);
-        } catch (error) {
-            console.error('Error fetching wishes:', error);
-            return res.status(500).json({ error: 'Could not retrieve wishes from storage.' });
         }
-    }
 
-    if (req.method === 'POST') {
-        try {
+        if (req.method === 'POST') {
             const { name, message } = req.body;
             if (!name || !message || typeof name !== 'string' || typeof message !== 'string') {
                 return res.status(400).json({ error: 'Name and message are required and must be strings.' });
@@ -39,26 +66,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const createdAt = Date.now();
             const id = `${createdAt}-${Math.random().toString(36).slice(2)}`;
             
-            // Explicitly type `newWish` as a Record to match the `hset` function's expectation.
-            const newWish: Record<string, string | number> = { 
+            // Data to be stored in Redis. All values in a hash should be strings.
+            const wishToStore = { 
                 id, 
                 name, 
                 message, 
-                createdAt 
+                createdAt: createdAt.toString(),
             };
+            
+            // Data to be returned to the client.
+            const wishToReturn = {
+                ...wishToStore,
+                createdAt, // return as a number
+            }
 
-            const pipeline = kv.pipeline();
-            pipeline.hset(`wish:${id}`, newWish);
-            pipeline.zadd(WISHES_KEY, { score: createdAt, member: id });
-            await pipeline.exec();
+            const multi = redisClient.multi();
+            multi.hSet(`wish:${id}`, wishToStore);
+            multi.zAdd(WISHES_KEY, { score: createdAt, value: id });
+            await multi.exec();
 
-            return res.status(201).json(newWish);
-        } catch (error) {
-            console.error('Error adding wish:', error);
-            return res.status(500).json({ error: 'Could not add your wish to storage.' });
+            return res.status(201).json(wishToReturn);
         }
-    }
 
-    res.setHeader('Allow', ['GET', 'POST']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+        res.setHeader('Allow', ['GET', 'POST']);
+        return res.status(405).end(`Method ${req.method} Not Allowed`);
+
+    } catch (error) {
+        console.error('Wishes API Redis Error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return res.status(500).json({ error: `Could not access wish storage. ${errorMessage}` });
+    }
 }
