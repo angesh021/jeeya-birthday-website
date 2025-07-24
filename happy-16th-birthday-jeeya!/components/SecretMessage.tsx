@@ -2,12 +2,22 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFocusTrap } from './shared/useFocusTrap.ts';
-import { getGiftConcept, getGiftImage, type GiftConcept } from '../services/giftService.ts';
 
 interface SecretMessageProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+const staticGift = {
+    name: "The Starlight Projector",
+    description: "Turns any room into a breathtaking galaxy, perfect for creating a magical and relaxing atmosphere.",
+    imageUrl: "https://images.unsplash.com/photo-1519638831568-d9897f54ed69?q=80&w=1200&auto=format&fit=crop",
+    features: [
+        { name: "Cosmic Ambiance", description: "Projects a realistic starry night sky onto your walls and ceiling." },
+        { name: "Multiple Modes", description: "Choose from different color combinations and dazzling effects." },
+        { name: "Soothing Sounds", description: "Connect via Bluetooth to play your favorite relaxing music." },
+    ]
+};
 
 const GiftBox: React.FC<{ onUnwrap: () => void }> = ({ onUnwrap }) => (
     <motion.div
@@ -52,31 +62,19 @@ const SecretMessage: React.FC<SecretMessageProps> = ({ isOpen, onClose }) => {
     const modalRef = useRef<HTMLDivElement>(null);
     useFocusTrap(modalRef, isOpen);
 
-    const [isUnwrapped, setIsUnwrapped] = useState(false);
-    const [giftConcept, setGiftConcept] = useState<GiftConcept | null>(null);
-    const [giftImageUrl, setGiftImageUrl] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [isImageLoading, setIsImageLoading] = useState(false);
+    const [isRevealed, setIsRevealed] = useState(false);
 
-    const resetState = useCallback(() => {
-        setIsUnwrapped(false);
-        setGiftConcept(null);
-        setGiftImageUrl(null);
-        setIsLoading(false);
-        setError(null);
-        setIsImageLoading(false);
-    }, []);
-
+    // Reset the component state when the modal is closed
     useEffect(() => {
         if (!isOpen) {
             const timer = setTimeout(() => {
-                resetState();
-            }, 300); // Allow exit animation
+                setIsRevealed(false);
+            }, 300); // Allow exit animation to complete before reset
             return () => clearTimeout(timer);
         }
-    }, [isOpen, resetState]);
+    }, [isOpen]);
     
+    // Add keyboard listener for closing the modal
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
@@ -85,36 +83,6 @@ const SecretMessage: React.FC<SecretMessageProps> = ({ isOpen, onClose }) => {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, onClose]);
 
-    const fetchGift = async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const concept = await getGiftConcept();
-            setGiftConcept(concept);
-
-            setIsImageLoading(true);
-            const imagePrompt = `${concept.name}: ${concept.description}`;
-            const imageResult = await getGiftImage(imagePrompt);
-            setGiftImageUrl(imageResult.imageUrl);
-
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-            setError(errorMessage);
-        } finally {
-            setIsLoading(false);
-            setIsImageLoading(false);
-        }
-    };
-    
-    const handleUnwrap = () => {
-        setIsUnwrapped(true);
-        fetchGift();
-    };
-    
-    const handleRetry = () => {
-        setError(null);
-        fetchGift();
-    };
 
     return (
         <AnimatePresence>
@@ -140,92 +108,24 @@ const SecretMessage: React.FC<SecretMessageProps> = ({ isOpen, onClose }) => {
                         
                         <div className="min-h-[400px] flex items-center justify-center">
                             <AnimatePresence mode="wait">
-                                {!isUnwrapped && (
-                                    <GiftBox onUnwrap={handleUnwrap} />
-                                )}
-
-                                {isUnwrapped && isLoading && (
-                                    <motion.div
-                                        key="loading"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        className="flex flex-col items-center justify-center gap-4 text-center"
-                                    >
-                                        <div className="relative w-20 h-20">
-                                            <motion.div
-                                                className="absolute inset-0 border-4 border-brand-primary rounded-full"
-                                                animate={{
-                                                    scale: [1, 1.3, 1],
-                                                    opacity: [0.5, 1, 0.5],
-                                                    rotate: [0, 180, 360],
-                                                }}
-                                                transition={{
-                                                    duration: 2.5,
-                                                    repeat: Infinity,
-                                                    ease: 'easeInOut',
-                                                }}
-                                            />
-                                            <motion.div
-                                                className="absolute inset-4 border-2 border-brand-accent rounded-full"
-                                                animate={{
-                                                    scale: [1, 0.7, 1],
-                                                    opacity: [1, 0.5, 1],
-                                                    rotate: [360, 180, 0],
-                                                }}
-                                                transition={{
-                                                    duration: 2.5,
-                                                    repeat: Infinity,
-                                                    ease: 'easeInOut',
-                                                }}
-                                            />
-                                            <motion.div
-                                                className="absolute inset-8 bg-white rounded-full"
-                                                animate={{
-                                                    scale: [1, 1.5, 1],
-                                                }}
-                                                transition={{
-                                                    duration: 1.25,
-                                                    repeat: Infinity,
-                                                    ease: 'easeInOut',
-                                                }}
-                                            />
-                                        </div>
-                                        <p className="text-brand-text/80 font-serif mt-4">Unwrapping your surprise...</p>
-                                    </motion.div>
-                                )}
-
-                                {isUnwrapped && error && (
-                                     <motion.div key="error" initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}} className="text-center">
-                                        <p className="text-red-400 mb-4">{error}</p>
-                                        <button onClick={handleRetry} className="px-6 py-2 bg-brand-secondary text-white font-bold rounded-full transform hover:scale-105 transition-transform">
-                                            Try Again
-                                        </button>
-                                     </motion.div>
-                                )}
-
-                                {isUnwrapped && !isLoading && !error && giftConcept && (
+                                {!isRevealed ? (
+                                    <GiftBox onUnwrap={() => setIsRevealed(true)} />
+                                ) : (
                                     <motion.div
                                         key="gift-content"
                                         className="grid md:grid-cols-2 gap-8 items-center w-full"
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.2 }}
+                                        transition={{ delay: 0.1 }}
                                     >
                                         <div className="flex flex-col items-center justify-center">
-                                            {isImageLoading ? (
-                                                <div className="w-full aspect-square bg-white/5 rounded-lg animate-pulse" />
-                                            ) : giftImageUrl ? (
-                                                <img src={giftImageUrl} alt={`Image of ${giftConcept.name}`} className="w-full h-auto object-cover rounded-lg shadow-2xl" />
-                                            ) : (
-                                                <div className="w-full aspect-square bg-white/5 rounded-lg flex items-center justify-center text-brand-text/50">Image not available</div>
-                                            )}
+                                            <img src={staticGift.imageUrl} alt={`Image of ${staticGift.name}`} className="w-full h-auto object-cover rounded-lg shadow-2xl" />
                                         </div>
                                         <div>
-                                            <h3 className="text-3xl font-bold text-brand-accent mb-2">{giftConcept.name}</h3>
-                                            <p className="text-brand-text/80 mb-4 italic">{giftConcept.description}</p>
+                                            <h3 className="text-3xl font-bold text-brand-accent mb-2">{staticGift.name}</h3>
+                                            <p className="text-brand-text/80 mb-4 italic">{staticGift.description}</p>
                                             <ul className="space-y-2">
-                                                {giftConcept.features.map(feature => (
+                                                {staticGift.features.map(feature => (
                                                     <li key={feature.name}>
                                                         <strong className="text-white">{feature.name}:</strong>
                                                         <span className="text-brand-text/70 ml-2">{feature.description}</span>

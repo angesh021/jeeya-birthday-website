@@ -44,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             // Use a pipeline to fetch all wish data efficiently
             const multi = redisClient.multi();
             wishIds.forEach(id => multi.hGetAll(`wish:${id}`));
-            const wishesData = await multi.exec() as Record<string, string>[];
+            const wishesData = (await multi.exec()) as unknown as Record<string, string>[];
 
             // hGetAll returns string values, so parse createdAt back to a number.
             const validWishes = wishesData
